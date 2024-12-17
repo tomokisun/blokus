@@ -15,20 +15,24 @@ struct BlokusApp: App {
 
 enum GameState {
   case newGame
-  case playing(computerMode: Bool)
+  case playing(computerMode: Bool, computerLevel: ComputerLevel)
+}
+
+enum ComputerLevel: String, CaseIterable {
+  case easy
+  case normal
 }
 
 struct RootView: View {
   @State var state = GameState.newGame
-  @State var computerMode = false
   
   var body: some View {
     switch state {
     case .newGame:
       NewGameView(state: $state)
 
-    case let .playing(computerMode):
-      ContentView(computerMode: computerMode)
+    case let .playing(computerMode, level):
+      ContentView(computerMode: computerMode, computerLevel: level)
     }
   }
 }

@@ -2,16 +2,28 @@ import Foundation
 
 struct ComputerPlayer {
   let owner: PlayerColor
+  let level: ComputerLevel
   
   // CPUが1手実行するロジック例
   // - 手番が来たらBoardとpiecesを参照
   // - piecesからおける場所を探して1手指す
   mutating func performCPUMove(board: inout Board, pieces: inout [Piece]) {
-    // CPUが持っているピース（ここでは仮にownerがCPUの持ち主）
-    let cpuPieces = pieces
-      .filter { $0.owner == owner }
-      .sorted(by: { $0.baseShape.count > $1.baseShape.count }) // ピースの大きさ順に並べる
-      .shuffled()
+    // CPUが持っているピースを抽出し、いったんシャッフルする
+    var cpuPieces = pieces
+        .filter { $0.owner == owner }
+        .shuffled()
+    
+    if level == .normal {
+      // baseShape.countをキーにしてグルーピングし、各グループ内もシャッフルする
+      let groupedByCount = Dictionary(grouping: cpuPieces, by: { $0.baseShape.count })
+          // mapValuesを用いて、各[Piece]をシャッフル
+          .mapValues { $0.shuffled() }
+
+      // countの値が大きい順に並べた上で、各グループを平坦化([Piece])へ
+      cpuPieces = groupedByCount
+          .sorted { $0.key > $1.key }
+          .flatMap(\.value)
+    }
     
     // ピースがなければパス
     guard !cpuPieces.isEmpty else {

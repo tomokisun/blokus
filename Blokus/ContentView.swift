@@ -3,17 +3,24 @@ import SwiftUI
 struct ContentView: View {
   @Environment(\.cellSize) var cellSize
   let computerMode: Bool
+  let computerLevel: ComputerLevel
 
   @State var board = Board()
   @State var selection: Piece?
   @State var player = PlayerColor.red
   
   @State var pieces: [Piece] = Piece.allPieces
-  @State var cpuPlayers = [
-    ComputerPlayer(owner: .blue),
-    ComputerPlayer(owner: .green),
-    ComputerPlayer(owner: .yellow)
-  ]
+  @State var cpuPlayers: [ComputerPlayer]
+  
+  init(computerMode: Bool, computerLevel: ComputerLevel) {
+    self.computerMode = computerMode
+    self.computerLevel = computerLevel
+    self.cpuPlayers = [
+      ComputerPlayer(owner: .blue, level: computerLevel),
+      ComputerPlayer(owner: .green, level: computerLevel),
+      ComputerPlayer(owner: .yellow, level: computerLevel)
+    ]
+  }
   
   func point(_ player: PlayerColor) -> Int {
     return pieces
@@ -113,6 +120,7 @@ struct ContentView: View {
       }
     }
     .sensoryFeedback(.impact, trigger: selection)
+    .sensoryFeedback(.impact, trigger: pieces)
     .sensoryFeedback(.impact, trigger: player)
     .onChange(of: selection) {
       if let piece = selection {
