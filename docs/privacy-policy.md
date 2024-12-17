@@ -56,6 +56,6 @@
 本ポリシーに関するお問い合わせは、以下の連絡先よりご連絡ください。
 
 **問い合わせ先:**  
-[Email] example@company.com
+[Email] developertomokisun@gmail.com
 
 以上
