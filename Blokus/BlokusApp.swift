@@ -29,7 +29,10 @@ struct RootView: View {
   var body: some View {
     switch state {
     case .newGame:
-      NewGameView(state: $state)
+      NavigationStack {
+        NewGameView(state: $state)
+          .navigationTitle(Text("Blokus App"))
+      }
 
     case let .playing(computerMode, level, isHighlight):
       ContentView(isHighlight: isHighlight, computerMode: computerMode, computerLevel: level)
