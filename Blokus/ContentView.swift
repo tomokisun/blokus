@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
   @Environment(\.cellSize) var cellSize
+  let isHighlight: Bool
   let computerMode: Bool
   let computerLevel: ComputerLevel
 
@@ -12,9 +13,15 @@ struct ContentView: View {
   @State var pieces: [Piece] = Piece.allPieces
   @State var cpuPlayers: [ComputerPlayer]
   
-  init(computerMode: Bool, computerLevel: ComputerLevel) {
+  init(
+    isHighlight: Bool,
+    computerMode: Bool,
+    computerLevel: ComputerLevel
+  ) {
+    self.isHighlight = isHighlight
     self.computerMode = computerMode
     self.computerLevel = computerLevel
+
     self.cpuPlayers = [
       ComputerPlayer(owner: .blue, level: computerLevel),
       ComputerPlayer(owner: .green, level: computerLevel),
@@ -123,12 +130,14 @@ struct ContentView: View {
     .sensoryFeedback(.impact, trigger: pieces)
     .sensoryFeedback(.impact, trigger: player)
     .onChange(of: selection) {
-      if let piece = selection {
-        // ピース選択時にハイライト
-        board.highlightPossiblePlacements(for: piece)
-      } else {
-        // ピース未選択時はハイライト解除
-        board.clearHighlights()
+      if isHighlight {
+        if let piece = selection {
+          // ピース選択時にハイライト
+          board.highlightPossiblePlacements(for: piece)
+        } else {
+          // ピース未選択時はハイライト解除
+          board.clearHighlights()
+        }
       }
     }
   }

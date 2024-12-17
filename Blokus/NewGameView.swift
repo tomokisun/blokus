@@ -3,6 +3,7 @@ import SwiftUI
 struct NewGameView: View {
   @Binding var state: GameState
   
+  @State var isHighlight = true
   @State var computerMode = false
   @State var computerLevel = ComputerLevel.easy
   
@@ -12,6 +13,8 @@ struct NewGameView: View {
 
   var body: some View {
     List {
+      Toggle("Show Highlight", isOn: $isHighlight)
+
       Toggle("Computer Mode", isOn: $computerMode)
       
       if computerMode {
@@ -24,7 +27,11 @@ struct NewGameView: View {
 
       Button("Start Game") {
         withAnimation(.default) {
-          state = .playing(computerMode: computerMode, computerLevel: computerLevel)
+          state = .playing(
+            computerMode: computerMode,
+            computerLevel: computerLevel,
+            isHighlight: isHighlight
+          )
         }
       }
     }
