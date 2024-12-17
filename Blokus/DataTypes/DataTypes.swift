@@ -7,11 +7,11 @@ struct Coordinate: Codable, Hashable, Equatable {
 }
 
 // プレイヤーの色
-enum PlayerColor: Int, Codable, Equatable, CaseIterable {
-  case red = 1
-  case blue = 100
-  case green = 10000
-  case yellow = 1000000
+enum PlayerColor: String, Codable, Equatable, CaseIterable {
+  case red = "Red"
+  case blue = "Blue"
+  case green = "Green"
+  case yellow = "Yellow"
 }
 
 // 回転を表すenum (90度刻み)
@@ -47,12 +47,35 @@ struct Orientation: Codable, Equatable {
 
 // ピースを表す構造体
 struct Piece: Codable, Identifiable, Equatable {
-  let id: Int
+  let id: String
   let owner: PlayerColor
   // ピースの基本形。0度回転・非反転時の座標群
   let baseShape: [Coordinate]
   // 現在の向き
   var orientation: Orientation
+}
+
+extension Piece {
+  static var allPieces: [Piece] = {
+    var pieces = [Piece]()
+    coordinates.enumerated().forEach { index, shape in
+      PlayerColor.allCases.forEach { owner in
+        pieces.append(
+          Piece(
+            id: "\(owner.rawValue):\(index)",
+            owner: owner,
+            baseShape: shape,
+            orientation: Orientation(
+              rotation: Rotation.none,
+              flipped: false
+            )
+          )
+        )
+      }
+    }
+    return pieces
+  }()
+    
 }
 
 extension Piece {
@@ -101,7 +124,7 @@ extension PlayerColor {
 /// highlighted: ハイライトなどの用途で使用可能(必須ではない)
 enum Cell: Codable {
   case empty
-  case occupied(pieceID: Int, owner: PlayerColor)
+  case occupied(pieceID: String, owner: PlayerColor)
 }
 
 enum PlacementError: Error, LocalizedError {

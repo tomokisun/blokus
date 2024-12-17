@@ -23,9 +23,6 @@ struct BoardView: View {
                 Rectangle()
                   .fill(isHighlighted ? Color.purple.opacity(0.4) : Color.gray.opacity(0.2))
                   .frame(width: cellSize, height: cellSize)
-                  .onTapGesture {
-                    onTapGesture(c)
-                  }
 
               case let .occupied(_, owner):
                 Rectangle()
@@ -34,6 +31,9 @@ struct BoardView: View {
               }
             }
             .border(Color.black, width: 0.5)
+            .onTapGesture {
+              onTapGesture(c)
+            }
           }
         }
       }

@@ -1,0 +1,128 @@
+import SwiftUI
+
+struct ContentView: View {
+  @Environment(\.cellSize) var cellSize
+  let computerMode: Bool
+
+  @State var board = Board()
+  @State var selection: Piece?
+  @State var player = PlayerColor.red
+  
+  @State var pieces: [Piece] = Piece.allPieces
+  @State var cpuPlayers = [
+    ComputerPlayer(owner: .blue),
+    ComputerPlayer(owner: .green),
+    ComputerPlayer(owner: .yellow)
+  ]
+  
+  func point(_ player: PlayerColor) -> Int {
+    return pieces
+      .filter { $0.owner == player }
+      .map(\.baseShape.count)
+      .reduce(0, +)
+  }
+  
+  var body: some View {
+    VStack(spacing: 20) {
+      BoardView(board: $board) { coordinate in
+        guard let piece = selection else { return }
+        do {
+          try board.placePiece(piece: piece, at: coordinate)
+
+          withAnimation(.default) {
+            pieces.removeAll(where: { $0.id == piece.id })
+            selection = nil
+          } completion: {
+            guard computerMode else { return }
+            withAnimation(.default) {
+              cpuPlayers[0].performCPUMove(board: &board, pieces: &pieces)
+            } completion: {
+              withAnimation(.default) {
+                cpuPlayers[1].performCPUMove(board: &board, pieces: &pieces)
+              } completion: {
+                withAnimation(.default) {
+                  cpuPlayers[2].performCPUMove(board: &board, pieces: &pieces)
+                }
+              }
+            }
+
+          }
+        } catch {
+          print(error)
+        }
+      }
+      
+      VStack(spacing: 20) {
+        Picker(selection: $player) {
+          ForEach(PlayerColor.allCases, id: \.color) { playerColor in
+            let text = "\(playerColor.rawValue): \(point(playerColor))pt"
+            Text(text)
+              .tag(playerColor)
+          }
+        } label: {
+          Text("label")
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 20)
+        .disabled(computerMode)
+        
+        HStack(spacing: 40) {
+          Button {
+            withAnimation(.default) {
+              self.pieces = pieces.map { piece in
+                Piece(id: piece.id, owner: piece.owner, baseShape: piece.baseShape, orientation: Orientation(
+                  rotation: piece.orientation.rotation.rotate90(),
+                  flipped: piece.orientation.flipped
+                ))
+              }
+            }
+          } label: {
+            Label("Rotate", systemImage: "rotate.right")
+          }
+          
+          Button {
+            withAnimation(.default) {
+              self.pieces = pieces.map { piece in
+                Piece(id: piece.id, owner: piece.owner, baseShape: piece.baseShape, orientation: Orientation(
+                  rotation: piece.orientation.rotation,
+                  flipped: !piece.orientation.flipped
+                ))
+              }
+            }
+          } label: {
+            Label("Flip", systemImage: "trapezoid.and.line.vertical")
+          }
+        }
+      }
+      .frame(maxHeight: .infinity, alignment: .top)
+
+      ScrollView(.horizontal) {
+        HStack(spacing: 20) {
+          ForEach(pieces.filter { $0.owner == player }) { piece in
+            Button {
+              selection = piece
+            } label: {
+              PieceView(cellSize: cellSize, piece: piece)
+                .padding()
+                .background(piece == selection ? player.color.opacity(0.2) : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+          }
+        }
+        .padding(.horizontal, 20)
+      }
+    }
+    .sensoryFeedback(.impact, trigger: selection)
+    .sensoryFeedback(.impact, trigger: player)
+    .onChange(of: selection) {
+      if let piece = selection {
+        // ピース選択時にハイライト
+        board.highlightPossiblePlacements(for: piece)
+      } else {
+        // ピース未選択時はハイライト解除
+        board.clearHighlights()
+      }
+    }
+  }
+}
+
