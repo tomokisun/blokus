@@ -29,13 +29,6 @@ struct ContentView: View {
     ]
   }
   
-  func point(_ player: PlayerColor) -> Int {
-    return pieces
-      .filter { $0.owner == player }
-      .map(\.baseShape.count)
-      .reduce(0, +)
-  }
-  
   var body: some View {
     VStack(spacing: 20) {
       BoardView(board: $board) { coordinate in
@@ -89,7 +82,8 @@ struct ContentView: View {
       VStack(spacing: 20) {
         Picker(selection: $player) {
           ForEach(PlayerColor.allCases, id: \.color) { playerColor in
-            let text = "\(playerColor.rawValue): \(point(playerColor))pt"
+            let point = board.score(for: playerColor)
+            let text = "\(playerColor.rawValue): \(point)pt"
             Text(text)
               .tag(playerColor)
           }
