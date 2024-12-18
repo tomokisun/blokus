@@ -29,6 +29,8 @@ import SwiftUI
   /// 現在ターンのプレイヤーの色を示します。
   var player = PlayerColor.red
   
+  let trunRecorder = TrunRecorder()
+  
   /// 現在選択されているコマ。`nil`の場合は未選択です。
   var pieceSelection: Piece?
   
@@ -121,6 +123,7 @@ import SwiftUI
         }
       } completion: {
         Task(priority: .userInitiated) {
+          await self.trunRecorder.recordPlaceAction(piece: piece, at: origin)
           await self.moveComputerPlayers()
         }
       }
@@ -160,6 +163,8 @@ import SwiftUI
           pieces.remove(at: index)
         }
       }
+    } else {
+      await trunRecorder.recordPassAction(owner: computer.owner)
     }
   }
 }
