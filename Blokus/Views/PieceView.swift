@@ -33,5 +33,6 @@ struct PieceView: View {
         }
       }
     }
+    .frame(minWidth: cellSize * 5, minHeight: cellSize * 5)
   }
 }
