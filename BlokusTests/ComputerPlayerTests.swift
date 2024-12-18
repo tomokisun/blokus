@@ -20,7 +20,7 @@ struct ComputerPlayerTests {
     let pieces = [makeSingleCellPiece(owner: .red)]
     
     let cpu = ComputerPlayer(owner: .red, level: .easy)
-    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+    if let candidate = await cpu.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
     }
     
@@ -37,7 +37,7 @@ struct ComputerPlayerTests {
     let cpu = ComputerPlayer(owner: .red, level: .easy)
     
     #expect(pieces.isEmpty == true)
-    #expect(cpu.moveCandidate(board: board, pieces: pieces) == nil)
+    #expect(await cpu.moveCandidate(board: board, pieces: pieces) == nil)
   }
   
   @Test
@@ -56,7 +56,7 @@ struct ComputerPlayerTests {
     
     // Now CPUの2手目
     let cpu = ComputerPlayer(owner: .red, level: .easy)
-    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+    if let candidate = await cpu.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
     }
     
@@ -87,7 +87,7 @@ struct ComputerPlayerTests {
     
     // 初手は必ずコーナーを含む必要があるので、一番大きなピースでも(0,0)を含む直線であれば置けるはず。
     let cpu = ComputerPlayer(owner: .red, level: .normal)
-    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+    if let candidate = await cpu.moveCandidate(board: board, pieces: pieces) {
       #expect(candidate.piece.id == bigPiece.id)
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       pieces.removeAll(where: { $0.id == candidate.piece.id })
@@ -99,7 +99,7 @@ struct ComputerPlayerTests {
     #expect(pieces.count == 2)
     
     // 次の手でmediumPieceを置いてみる
-    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+    if let candidate = await cpu.moveCandidate(board: board, pieces: pieces) {
       #expect(candidate.piece.id == mediumPiece.id)
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       pieces.removeAll(where: { $0.id == candidate.piece.id })
@@ -127,7 +127,7 @@ struct ComputerPlayerTests {
     ]
     
     let cpu = ComputerPlayer(owner: .red, level: .easy)
-    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+    if let candidate = await cpu.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
     }
     
@@ -144,7 +144,7 @@ struct ComputerPlayerTests {
     let pieces = [p]
     
     let cpu = ComputerPlayer(owner: .red, level: .easy)
-    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+    if let candidate = await cpu.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
     }
     
