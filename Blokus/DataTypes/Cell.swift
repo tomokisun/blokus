@@ -1,6 +1,6 @@
 import Foundation
 
-enum Cell: Codable {
+enum Cell: Codable, Equatable {
   case empty
   case occupied(owner: PlayerColor)
 }

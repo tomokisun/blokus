@@ -29,7 +29,7 @@ struct Board: Codable {
     
     // 配置確定
     for bc in finalCoords {
-      cells[bc.y][bc.x] = .occupied(owner: piece.owner)
+      cells[bc.x][bc.y] = .occupied(owner: piece.owner)
     }
   }
   
@@ -89,7 +89,7 @@ struct Board: Codable {
       guard isValidCoordinate(bc) else {
         throw PlacementError.outOfBounds
       }
-      if case .occupied = cells[bc.y][bc.x] {
+      if case .occupied = cells[bc.x][bc.y] {
         throw PlacementError.cellOccupied
       }
     }
@@ -161,7 +161,7 @@ struct Board: Codable {
   
   private func hasPlacedFirstPiece(for player: PlayerColor) -> Bool {
     let coordinate = Board.startingCorner(for: player)
-    switch cells[coordinate.y][coordinate.x] {
+    switch cells[coordinate.x][coordinate.y] {
     case .empty:
       return false
     case let .occupied(owner):
@@ -173,7 +173,7 @@ struct Board: Codable {
     var result = Set<Coordinate>()
     for y in 0..<Self.height {
       for x in 0..<Self.width {
-        if case let .occupied(cellOwner) = cells[y][x], cellOwner == owner {
+        if case let .occupied(cellOwner) = cells[x][y], cellOwner == owner {
           result.insert(Coordinate(x: x, y: y))
         }
       }
