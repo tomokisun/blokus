@@ -1,39 +1,71 @@
 import Foundation
 
+struct CandidateMove {
+  let piece: Piece
+  let origin: Coordinate
+  let rotation: Rotation
+  let flipped: Bool
+}
+
+struct Candidate {
+  let piece: Piece
+  let origin: Coordinate
+}
+
 struct ComputerPlayer {
   let owner: PlayerColor
   let level: ComputerLevel
   
-  // CPUが1手実行するロジック例
-  // - 手番が来たらBoardとpiecesを参照
-  // - piecesからおける場所を探して1手指す
-  mutating func performCPUMove(board: inout Board, pieces: inout [Piece]) {
-    // CPUが持っているピースを抽出し、いったんシャッフルする
-    var cpuPieces = pieces
-        .filter { $0.owner == owner }
-        .shuffled()
-    
-    if level == .normal {
-      // baseShape.countをキーにしてグルーピングし、各グループ内もシャッフルする
-      let groupedByCount = Dictionary(grouping: cpuPieces, by: { $0.baseShape.count })
-          // mapValuesを用いて、各[Piece]をシャッフル
-          .mapValues { $0.shuffled() }
-
-      // countの値が大きい順に並べた上で、各グループを平坦化([Piece])へ
-      cpuPieces = groupedByCount
-          .sorted { $0.key > $1.key }
-          .flatMap(\.value)
-    }
-    
-    // ピースがなければパス
-    guard !cpuPieces.isEmpty else {
+  func moveCandidate(board: Board, pieces: [Piece]) -> Candidate? {
+    let ownerPieces = getOwnedPieces(pieces: pieces)
+    guard !ownerPieces.isEmpty else {
       print("CPU(\(owner)) has no pieces left and passes.")
-      return
+      return nil
     }
     
-    // 超簡易的な戦略:
-    // 1. ピースを1つずつ試す
-    for piece in cpuPieces {
+    var candidates = computeCandidateMoves(board: board, pieces: ownerPieces)
+    
+    switch level {
+    case .easy:
+      break
+      
+    case .normal:
+      candidates = Dictionary(grouping: candidates, by: { $0.piece.baseShape.count })
+        .mapValues { $0.shuffled() }
+        .sorted(by: { $0.key > $1.key })
+        .flatMap(\.value)
+    }
+    
+    guard let candidate = candidates.first else {
+      print("CPU(\(owner)) cannot place any piece and passes.")
+      return nil
+    }
+    
+    var bestPiece = candidate.piece
+    bestPiece.orientation = Orientation(rotation: candidate.rotation, flipped: candidate.flipped)
+    return Candidate(piece: bestPiece, origin: candidate.origin)
+  }
+  
+  private func getOwnedPieces(pieces: [Piece]) -> [Piece] {
+    return pieces.filter { $0.owner == owner }
+  }
+  
+  private func performPlacePirce(board: inout Board, pieces: inout [Piece], piece: Piece, at coordinate: Coordinate) {
+    do {
+      try board.placePiece(piece: piece, at: coordinate)
+      if let idx = pieces.firstIndex(where: { $0.id == piece.id }) {
+        pieces.remove(at: idx)
+      }
+      print("CPU(\(owner)) placed piece \(piece.id) at (\(coordinate.x), \(coordinate.y)) [\(level)]")
+    } catch {
+      print("Unexpected error in placing best move: \(error)")
+    }
+  }
+  
+  private func computeCandidateMoves(board: Board, pieces: [Piece]) -> [CandidateMove] {
+    var candidates = [CandidateMove]()
+    
+    for piece in pieces {
       // ピースの全オリエンテーションを試す（回転4種 x flipped有無の2倍 = 8通り）
       for rotationCase in [Rotation.none, .ninety, .oneEighty, .twoSeventy] {
         for flippedCase in [false, true] {
@@ -45,27 +77,21 @@ struct ComputerPlayer {
             for x in 0..<Board.width {
               let origin = Coordinate(x: x, y: y)
               if board.canPlacePiece(piece: testPiece, at: origin) {
-                // 配置可能な場所が見つかったので配置
-                do {
-                  try board.placePiece(piece: testPiece, at: origin)
-                  // 配置したピースをpiecesから削除
-                  if let idx = pieces.firstIndex(where: { $0.id == piece.id }) {
-                    pieces.remove(at: idx)
-                  }
-                  print("CPU(\(owner)) placed piece \(piece.id) at (\(x), \(y))")
-                  return // 1手指したら終了
-                } catch {
-                  // 理論上canPlacePieceでOK判定後なら起きないはず
-                  continue
-                }
+                candidates.append(
+                  CandidateMove(
+                    piece: piece,
+                    origin: origin,
+                    rotation: rotationCase,
+                    flipped: flippedCase
+                  )
+                )
               }
             }
           }
         }
       }
     }
-    
-    // ここまできたら配置できるピースがない=パス
-    print("CPU(\(owner)) cannot place any piece and passes.")
+    return candidates
   }
 }
+

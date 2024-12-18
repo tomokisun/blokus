@@ -15,6 +15,12 @@ struct Board: Codable {
   
   // MARK: - Public Methods
   
+  /// 指定したプレイヤーのスコアを返す
+  func score(for player: PlayerColor) -> Int {
+    let playerCells = getPlayerCells(owner: player)
+    return playerCells.count
+  }
+  
   /// 指定した座標がボード上に存在するかをチェック
   func isValidCoordinate(_ c: Coordinate) -> Bool {
     return c.x >= 0 && c.x < Board.width && c.y >= 0 && c.y < Board.height

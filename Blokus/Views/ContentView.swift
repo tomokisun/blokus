@@ -28,14 +28,7 @@ struct ContentView: View {
       ComputerPlayer(owner: .yellow, level: computerLevel)
     ]
   }
-  
-  func point(_ player: PlayerColor) -> Int {
-    return pieces
-      .filter { $0.owner == player }
-      .map(\.baseShape.count)
-      .reduce(0, +)
-  }
-  
+
   var body: some View {
     VStack(spacing: 20) {
       BoardView(board: $board) { coordinate in
@@ -48,18 +41,38 @@ struct ContentView: View {
             selection = nil
           } completion: {
             guard computerMode else { return }
-            withAnimation(.default) {
-              cpuPlayers[0].performCPUMove(board: &board, pieces: &pieces)
-            } completion: {
-              withAnimation(.default) {
-                cpuPlayers[1].performCPUMove(board: &board, pieces: &pieces)
-              } completion: {
-                withAnimation(.default) {
-                  cpuPlayers[2].performCPUMove(board: &board, pieces: &pieces)
+            DispatchQueue.global(qos: .userInitiated).async {
+              do {
+                if let candidate = cpuPlayers[0].moveCandidate(board: board, pieces: pieces) {
+                  try board.placePiece(piece: candidate.piece, at: candidate.origin)
+                  DispatchQueue.main.async {
+                    if let idx = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
+                      pieces.remove(at: idx)
+                    }
+                  }
                 }
+                
+                if let candidate = cpuPlayers[1].moveCandidate(board: board, pieces: pieces) {
+                  try board.placePiece(piece: candidate.piece, at: candidate.origin)
+                  DispatchQueue.main.async {
+                    if let idx = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
+                      pieces.remove(at: idx)
+                    }
+                  }
+                }
+                
+                if let candidate = cpuPlayers[2].moveCandidate(board: board, pieces: pieces) {
+                  try board.placePiece(piece: candidate.piece, at: candidate.origin)
+                  DispatchQueue.main.async {
+                    if let idx = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
+                      pieces.remove(at: idx)
+                    }
+                  }
+                }
+              } catch {
+                print(error)
               }
             }
-
           }
         } catch {
           print(error)
@@ -69,7 +82,8 @@ struct ContentView: View {
       VStack(spacing: 20) {
         Picker(selection: $player) {
           ForEach(PlayerColor.allCases, id: \.color) { playerColor in
-            let text = "\(playerColor.rawValue): \(point(playerColor))pt"
+            let point = board.score(for: playerColor)
+            let text = "\(playerColor.rawValue): \(point)pt"
             Text(text)
               .tag(playerColor)
           }
