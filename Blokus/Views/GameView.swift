@@ -49,10 +49,13 @@ struct GameView: View {
           }
         }
       }
-      .frame(maxHeight: .infinity, alignment: .top)
       
-      ScrollView(.horizontal) {
-        HStack(spacing: 20) {
+      ScrollView(.vertical) {
+        LazyVGrid(
+          columns: Array(repeating: GridItem(spacing: 0), count: 3),
+          alignment: .center,
+          spacing: 0
+        ) {
           ForEach(store.playerPieces) { piece in
             Button {
               store.pieceSelection = piece
