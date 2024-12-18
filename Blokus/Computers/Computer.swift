@@ -22,12 +22,21 @@ extension Computer {
     return Candidate(piece: bestPiece, origin: move.origin)
   }
 
-  /// コンピュータ所有のピースだけを抽出します。
-  ///
-  /// - Parameter pieces: 全てのピース配列
-  /// - Returns: `owner`に紐づくピース配列
-  func getOwnedPieces(pieces: [Piece]) -> [Piece] {
+  func getPlayerPieces(from pieces: [Piece], owner: PlayerColor) -> [Piece] {
     return pieces.filter { $0.owner == owner }
+  }
+  
+  /// ボードから指定プレイヤーのセルを取得します。
+  func getPlayerCells(from board: Board, owner: PlayerColor) -> Set<Coordinate> {
+    var result = Set<Coordinate>()
+    for y in 0..<Board.height {
+      for x in 0..<Board.width {
+        if case let .occupied(cellOwner) = board.cells[x][y], cellOwner == owner {
+          result.insert(Coordinate(x: x, y: y))
+        }
+      }
+    }
+    return result
   }
   
   /// 配置可能な全ての候補手を算出します。

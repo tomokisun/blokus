@@ -8,7 +8,7 @@ actor ComputerEasy: Computer {
   }
 
   func moveCandidate(board: Board, pieces: [Piece]) -> Candidate? {
-    let ownerPieces = getOwnedPieces(pieces: pieces)
+    let ownerPieces = getPlayerPieces(from: pieces, owner: owner)
     guard !ownerPieces.isEmpty else {
       print("CPU(\(owner)) has no pieces left and passes.")
       return nil

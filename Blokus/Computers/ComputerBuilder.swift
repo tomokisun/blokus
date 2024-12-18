@@ -8,6 +8,9 @@ enum ComputerBuilder {
       
     case .normal:
       return ComputerNormal(owner: player)
+      
+    case .hard:
+      return ComputerHard(owner: player)
     }
   }
 }
