@@ -11,9 +11,6 @@ enum ComputerBuilder {
       
     case .hard:
       return ComputerHard(owner: player)
-      
-    case .predator:
-      return ComputerPredator(owner: player)
     }
   }
 }

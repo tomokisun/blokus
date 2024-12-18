@@ -26,7 +26,12 @@ actor ComputerPredator: Computer {
       return nil
     }
     
-    let candidates = computeCandidateMoves(board: board, pieces: ownerPieces)
+    var candidates = computeCandidateMoves(board: board, pieces: ownerPieces)
+    if candidates.count > 20 {
+      candidates = candidates.filter { $0.piece.baseShape.count >= 5 }
+        .suffix(5)
+        .compactMap { $0 }
+    }
     guard !candidates.isEmpty else {
       print("CPU(\(owner)) cannot place any piece and passes.")
       return nil
@@ -36,7 +41,6 @@ actor ComputerPredator: Computer {
     totalNodes = approximateTotalNodes(candidatesCount: candidates.count, depth: maxDepth)
     exploredNodes = 0
     updateProgress() // 開始時0%
-    print("Total Nodes[\(owner.rawValue)]: \(totalNodes)")
     
     var bestScore = Int.min
     var bestCandidate: CandidateMove? = nil
@@ -80,7 +84,12 @@ actor ComputerPredator: Computer {
     }
     
     let currentPlayerPieces = getPlayerPieces(from: allPieces, owner: currentPlayer)
-    let moves = computeCandidateMoves(board: board, pieces: currentPlayerPieces)
+    var moves = computeCandidateMoves(board: board, pieces: currentPlayerPieces)
+    if moves.count > 20 {
+      moves = moves.filter { $0.piece.baseShape.count >= 5 }
+        .suffix(5)
+        .compactMap { $0 }
+    }
     
     if moves.isEmpty {
       let next = nextPlayer(after: currentPlayer)
@@ -151,6 +160,7 @@ actor ComputerPredator: Computer {
                 + (distanceScore * 2)
                 - (othersScoreSum * 8)
     
+    print("Score[\(owner.rawValue)]: \(score)", ownerScore, potentialPlacements, distanceScore, othersScoreSum)
     return score
   }
   
@@ -235,7 +245,12 @@ actor ComputerPredator: Computer {
     for player in PlayerColor.allCases {
       let playerPieces = getPlayerPieces(from: pieces, owner: player)
       if !playerPieces.isEmpty {
-        let moves = computeCandidateMoves(board: board, pieces: playerPieces)
+        var moves = computeCandidateMoves(board: board, pieces: playerPieces)
+        if moves.count > 20 {
+          moves = moves.filter { $0.piece.baseShape.count >= 5 }
+            .suffix(5)
+            .compactMap { $0 }
+        }
         if !moves.isEmpty {
           return false
         }
@@ -263,7 +278,6 @@ actor ComputerPredator: Computer {
   
   private func updateProgress() {
     let progress = totalNodes > 0 ? Double(exploredNodes) / Double(totalNodes) : 0.0
-    print("Progress[\(owner.rawValue)]: \(progress)")
     progressSubject.send(progress)
   }
 }
