@@ -4,7 +4,7 @@ struct NewGameView: View {
   @Binding var state: GameState
   
   @State var isHighlight = true
-  @State var computerMode = false
+  @State var computerMode = true
   @State var computerLevel = ComputerLevel.easy
   
   init(state: Binding<GameState>) {

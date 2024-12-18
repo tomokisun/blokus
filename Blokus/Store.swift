@@ -131,6 +131,7 @@ import SwiftUI
   
   /// 全てのコンピュータプレイヤーが思考・配置する工程を順番に実行します。
   private func moveComputerPlayers() async {
+    guard computerMode else { return }
     for player in computerPlayers {
       do {
         let owner = await player.owner
