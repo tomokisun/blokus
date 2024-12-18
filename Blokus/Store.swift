@@ -149,7 +149,7 @@ import SwiftUI
   ///
   /// - Parameter computer: 思考・手番を実行するコンピュータプレイヤー。
   /// - Throws: 配置できない場合などエラーが発生する可能性があります。
-  private func moveComputerPlayer(_ computer: ComputerPlayer) async throws {
+  private func moveComputerPlayer(_ computer: ComputerPlayer) async throws(PlacementError) {
     if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       
