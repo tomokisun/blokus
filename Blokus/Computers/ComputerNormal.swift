@@ -1,7 +1,5 @@
 import Foundation
 
-/// `ComputerPlayer` は、指定されたオーナー(プレイヤー色)と思考レベルをもとに、
-/// ボード上でコマを最適に配置する手を計算するエージェントです。
 actor ComputerNormal: Computer {
   let owner: PlayerColor
 
