@@ -40,7 +40,8 @@ struct GameView: View {
           Button {
             store.rotatePiece()
           } label: {
-            Label("Rotate", systemImage: "rotate.right")
+            let flipped = store.pieces.first?.orientation.flipped ?? false
+            Label("Rotate", systemImage: flipped ? "rotate.right" : "rotate.left")
           }
           
           Button {
