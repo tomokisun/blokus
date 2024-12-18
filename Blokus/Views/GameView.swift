@@ -46,6 +46,7 @@ struct GameView: View {
           ForEach(store.playerPieces) { piece in
             Button {
               store.pieceSelection = piece
+              store.updateBoardHighlights()
             } label: {
               PieceView(cellSize: cellSize, piece: piece)
                 .padding()

@@ -11,12 +11,8 @@ import SwiftUI
   var computerPlayers: [ComputerPlayer]
   
   var player = PlayerColor.red
-  var pieceSelection: Piece? {
-    didSet {
-      onChangePieces()
-    }
-  }
-  
+  var pieceSelection: Piece?
+
   var playerPieces: [Piece] {
     pieces.filter { $0.owner == player }
   }
@@ -59,7 +55,7 @@ import SwiftUI
     }
   }
 
-  func onChangePieces() {
+  func updateBoardHighlights() {
     guard isHighlight else { return }
     if let piece = pieceSelection {
       board.highlightPossiblePlacements(for: piece)
@@ -76,18 +72,13 @@ import SwiftUI
       
       withAnimation {
         pieceSelection = nil
+        updateBoardHighlights()
         if let index = pieces.firstIndex(where: { $0.id == piece.id }) {
           pieces.remove(at: index)
         }
       } completion: {
         Task(priority: .userInitiated) {
-          do {
-            try await self.moveComputerPlayer(self.computerPlayers[0])
-            try await self.moveComputerPlayer(self.computerPlayers[1])
-            try await self.moveComputerPlayer(self.computerPlayers[2])
-          } catch {
-            print(error)
-          }
+          await self.moveComputerPlayers()
         }
       }
     } catch {
@@ -95,11 +86,18 @@ import SwiftUI
     }
   }
   
+  private func moveComputerPlayers() async {
+    for player in computerPlayers {
+      do {
+        try await moveComputerPlayer(player)
+      } catch {
+        print(error)
+      }
+    }
+  }
+  
   // MARK: - Computer
   private func moveComputerPlayer(_ computer: ComputerPlayer) async throws {
-    Task(priority: .userInitiated) {
-      
-    }
     if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       
