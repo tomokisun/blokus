@@ -48,18 +48,38 @@ struct ContentView: View {
             selection = nil
           } completion: {
             guard computerMode else { return }
-            withAnimation(.default) {
-              cpuPlayers[0].performCPUMove(board: &board, pieces: &pieces)
-            } completion: {
-              withAnimation(.default) {
-                cpuPlayers[1].performCPUMove(board: &board, pieces: &pieces)
-              } completion: {
-                withAnimation(.default) {
-                  cpuPlayers[2].performCPUMove(board: &board, pieces: &pieces)
+            DispatchQueue.global(qos: .userInitiated).async {
+              do {
+                if let candidate = cpuPlayers[0].moveCandidate(board: board, pieces: pieces) {
+                  try board.placePiece(piece: candidate.piece, at: candidate.origin)
+                  DispatchQueue.main.async {
+                    if let idx = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
+                      pieces.remove(at: idx)
+                    }
+                  }
                 }
+                
+                if let candidate = cpuPlayers[1].moveCandidate(board: board, pieces: pieces) {
+                  try board.placePiece(piece: candidate.piece, at: candidate.origin)
+                  DispatchQueue.main.async {
+                    if let idx = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
+                      pieces.remove(at: idx)
+                    }
+                  }
+                }
+                
+                if let candidate = cpuPlayers[2].moveCandidate(board: board, pieces: pieces) {
+                  try board.placePiece(piece: candidate.piece, at: candidate.origin)
+                  DispatchQueue.main.async {
+                    if let idx = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
+                      pieces.remove(at: idx)
+                    }
+                  }
+                }
+              } catch {
+                print(error)
               }
             }
-
           }
         } catch {
           print(error)
