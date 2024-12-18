@@ -12,6 +12,7 @@ import SwiftUI
   
   var player = PlayerColor.red
   var pieceSelection: Piece?
+  var thinkingState = ComputerThinkingState.idle
 
   var playerPieces: [Piece] {
     pieces.filter { $0.owner == player }
@@ -89,9 +90,12 @@ import SwiftUI
   private func moveComputerPlayers() async {
     for player in computerPlayers {
       do {
+        thinkingState = .thinking(player.owner)
         try await moveComputerPlayer(player)
+        thinkingState = .idle
       } catch {
         print(error)
+        thinkingState = .idle
       }
     }
   }

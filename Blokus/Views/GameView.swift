@@ -9,6 +9,16 @@ struct GameView: View {
       BoardView(board: $store.board) { coordinate in
         store.movePlayerPiece(at: coordinate)
       }
+      .overlay {
+        if case let .thinking(computer) = store.thinkingState {
+          Color.black.opacity(0.7)
+            .overlay {
+              Label("\(computer.rawValue) is thinking...", systemImage: "progress.indicator")
+                .foregroundStyle(Color.white)
+                .symbolEffect(.variableColor.iterative)
+            }
+        }
+      }
       
       VStack(spacing: 12) {
         Picker(selection: $store.player) {
@@ -61,5 +71,18 @@ struct GameView: View {
       .sensoryFeedback(.impact, trigger: store.pieces)
       .sensoryFeedback(.impact, trigger: store.player)
     }
+  }
+}
+
+#Preview {
+  GeometryReader { proxy in
+    GameView(
+      store: Store(
+        isHighlight: true,
+        computerMode: true,
+        computerLevel: ComputerLevel.normal
+      )
+    )
+    .environment(\.cellSize, proxy.size.width / 20)
   }
 }
