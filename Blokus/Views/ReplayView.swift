@@ -87,6 +87,20 @@ struct ReplayView: View {
   
   var body: some View {
     VStack(spacing: 20) {
+      LazyVGrid(columns: Array(repeating: GridItem(spacing: 0), count: 2), spacing: 0) {
+        ForEach(PlayerColor.allCases, id: \.color) { playerColor in
+          let point = store.board.score(for: playerColor)
+          Text("\(point)pt")
+            .frame(height: 32)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .background(playerColor.color)
+            .foregroundStyle(Color.white)
+            .font(.system(.headline, design: .rounded, weight: .bold))
+        }
+      }
+      .clipShape(RoundedRectangle(cornerRadius: 8))
+      .padding(.horizontal)
+
       BoardView(board: $store.board) { _ in }
       
       // 再生進捗バー
