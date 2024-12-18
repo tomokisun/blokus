@@ -110,7 +110,7 @@ import SwiftUI
   /// - Parameter origin: コマを配置するボード上の座標。
   /// - Note: 配置後は該当のコマを `pieces` から削除し、ハイライトを更新します。
   ///         配置が完了するとコンピュータプレイヤーの手番処理へ移行します。
-  func movePlayerPiece(at origin: Coordinate) {
+  func cellButtonTapped(at origin: Coordinate) {
     guard let piece = pieceSelection else { return }
     do {
       try board.placePiece(piece: piece, at: origin)
@@ -129,6 +129,13 @@ import SwiftUI
       }
     } catch {
       print(error)
+    }
+  }
+  
+  func passButtonTapped() {
+    Task(priority: .userInitiated) {
+      await trunRecorder.recordPassAction(owner: player)
+      await moveComputerPlayers()
     }
   }
   

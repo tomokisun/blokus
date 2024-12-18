@@ -8,7 +8,7 @@ struct GameView: View {
   var body: some View {
     VStack(spacing: 12) {
       BoardView(board: $store.board) { coordinate in
-        store.movePlayerPiece(at: coordinate)
+        store.cellButtonTapped(at: coordinate)
       }
       .overlay {
         if case let .thinking(computer) = store.thinkingState {
@@ -77,6 +77,15 @@ struct GameView: View {
           }
         }
         .padding(.horizontal, 20)
+        
+        Button {
+          store.passButtonTapped()
+        } label: {
+          Text("Pass")
+            .frame(height: cellSize * 3)
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 20)
       }
       .sensoryFeedback(.impact, trigger: store.pieceSelection)
       .sensoryFeedback(.impact, trigger: store.pieces)
@@ -94,7 +103,7 @@ struct GameView: View {
       store: Store(
         isHighlight: true,
         computerMode: true,
-        computerLevel: ComputerLevel.normal
+        computerLevel: ComputerLevel.hard
       )
     )
     .environment(\.cellSize, proxy.size.width / 20)
