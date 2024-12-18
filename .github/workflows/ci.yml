@@ -1,0 +1,11 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcodebuild test -project Blokus.xcodeproj -scheme BlokusTests -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest'

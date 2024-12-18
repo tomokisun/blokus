@@ -12,7 +12,7 @@ struct BoardView: View {
         GridRow {
           ForEach(0..<Board.width, id: \.self) { col in
             let c = Coordinate(x: col, y: row)
-            let cell = board.cells[row][col]
+            let cell = board.cells[col][row]
             
             // ハイライト判定
             let isHighlighted = board.highlightedCoordinates.contains(c)
