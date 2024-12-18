@@ -193,7 +193,7 @@ struct Board {
   ///   - playerCells: プレイヤーが占有するセルの集合
   /// - Returns: 斜め（角）接触がある場合は `true`
   private func checkCornerTouch(fc: Coordinate, playerCells: Set<Coordinate>) -> Bool {
-    let neighborsDiagonal = diagonalNeighbors(of: fc)
+    let neighborsDiagonal = fc.diagonalNeighbors()
     return neighborsDiagonal.contains(where: { playerCells.contains($0) })
   }
   
@@ -204,36 +204,10 @@ struct Board {
   ///   - playerCells: プレイヤーが占有するセルの集合
   /// - Returns: 辺で接触がある場合は `true`
   private func checkEdgeContact(fc: Coordinate, playerCells: Set<Coordinate>) -> Bool {
-    let neighborsEdge = edgeNeighbors(of: fc)
+    let neighborsEdge = fc.edgeNeighbors()
     return neighborsEdge.contains(where: { playerCells.contains($0) })
   }
-  
-  /// 斜め方向の近傍セルを取得します。
-  ///
-  /// - Parameter coord: 基準となる座標
-  /// - Returns: 4方向の斜め近傍セル座標の配列
-  private func diagonalNeighbors(of coord: Coordinate) -> [Coordinate] {
-    return [
-      Coordinate(x: coord.x-1, y: coord.y-1),
-      Coordinate(x: coord.x+1, y: coord.y-1),
-      Coordinate(x: coord.x-1, y: coord.y+1),
-      Coordinate(x: coord.x+1, y: coord.y+1)
-    ]
-  }
-  
-  /// 上下左右方向の近傍セルを取得します。
-  ///
-  /// - Parameter coord: 基準となる座標
-  /// - Returns: 上下左右4方向の近傍セル座標の配列
-  private func edgeNeighbors(of coord: Coordinate) -> [Coordinate] {
-    return [
-      Coordinate(x: coord.x, y: coord.y-1),
-      Coordinate(x: coord.x, y: coord.y+1),
-      Coordinate(x: coord.x-1, y: coord.y),
-      Coordinate(x: coord.x+1, y: coord.y)
-    ]
-  }
-  
+
   // MARK: - State Checking
   
   /// 指定したプレイヤーがすでに最初のピースを置いたか確認します。

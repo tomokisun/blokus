@@ -6,6 +6,34 @@ struct Coordinate: Codable, Hashable, Equatable {
   let y: Int
 }
 
+extension Coordinate {
+  /// 斜め方向の近傍セルを取得します。
+  ///
+  /// - Parameter coord: 基準となる座標
+  /// - Returns: 4方向の斜め近傍セル座標の配列
+  func diagonalNeighbors() -> [Coordinate] {
+    return [
+      Coordinate(x: x-1, y: y-1),
+      Coordinate(x: x+1, y: y-1),
+      Coordinate(x: x-1, y: y+1),
+      Coordinate(x: x+1, y: y+1)
+    ]
+  }
+
+  /// 上下左右方向の近傍セルを取得します。
+  ///
+  /// - Parameter coord: 基準となる座標
+  /// - Returns: 上下左右4方向の近傍セル座標の配列
+  func edgeNeighbors() -> [Coordinate] {
+    return [
+      Coordinate(x: x, y: y-1),
+      Coordinate(x: x, y: y+1),
+      Coordinate(x: x-1, y: y),
+      Coordinate(x: x+1, y: y)
+    ]
+  }
+}
+
 let coordinates: [[Coordinate]] = [
   .a, .b, .c, .d, .e, .f, .g, .h, .i, .j,
   .k, .l,.m, .n, .o, .p, .q, .r, .s, .t, .u,
