@@ -1,205 +1,51 @@
 import SwiftUI
 
-// 座標を表す構造体
-struct Coordinate: Codable, Hashable, Equatable {
-  let x: Int
-  let y: Int
-}
-
-// プレイヤーの色
-enum PlayerColor: String, Codable, Equatable, CaseIterable {
-  case red = "Red"
-  case blue = "Blue"
-  case green = "Green"
-  case yellow = "Yellow"
-}
-
-// 回転を表すenum (90度刻み)
-enum Rotation: Double, Codable, Equatable {
-  case none = 0
-  case ninety = 90
-  case oneEighty = 180
-  case twoSeventy = 270
-  
-  func rotate90() -> Rotation {
-    switch self {
-    case .none:
-      return .ninety
-    case .ninety:
-      return .oneEighty
-    case .oneEighty:
-      return .twoSeventy
-    case .twoSeventy:
-      return .none
-    }
-  }
-}
-
-// 向きを表す構造体
-struct Orientation: Codable, Equatable {
-  var rotation: Rotation
-  var flipped: Bool
-  
-  mutating func rotate90Clockwise() {
-    rotation = rotation.rotate90()
-  }
-}
-
-// ピースを表す構造体
-struct Piece: Codable, Identifiable, Equatable {
-  let id: String
-  let owner: PlayerColor
-  // ピースの基本形。0度回転・非反転時の座標群
-  let baseShape: [Coordinate]
-  // 現在の向き
-  var orientation: Orientation
-}
-
-extension Piece {
-  static var allPieces: [Piece] = {
-    var pieces = [Piece]()
-    coordinates.enumerated().forEach { index, shape in
-      PlayerColor.allCases.forEach { owner in
-        pieces.append(
-          Piece(
-            id: "\(owner.rawValue):\(index)",
-            owner: owner,
-            baseShape: shape,
-            orientation: Orientation(
-              rotation: Rotation.none,
-              flipped: false
-            )
-          )
-        )
-      }
-    }
-    return pieces
-  }()
-    
-}
-
-extension Piece {
-  func transformedShape() -> [Coordinate] {
-    var transformed = baseShape
-    
-    // 回転適用
-    switch orientation.rotation {
-    case .none:
-      break
-    case .ninety:
-      // (x,y) -> (y, -x)
-      transformed = transformed.map { Coordinate(x: $0.y, y: -$0.x) }
-    case .oneEighty:
-      // (x,y) -> (-x, -y)
-      transformed = transformed.map { Coordinate(x: -$0.x, y: -$0.y) }
-    case .twoSeventy:
-      // (x,y) -> (-y, x)
-      transformed = transformed.map { Coordinate(x: -$0.y, y: $0.x) }
-    }
-    
-    // 反転適用 (水平反転とする)
-    if orientation.flipped {
-      transformed = transformed.map { Coordinate(x: -$0.x, y: $0.y) }
-    }
-    
-    return transformed
-  }
-}
-
-// PlayerColorをSwiftUIのColorへ変換するための拡張
-extension PlayerColor {
-  var color: Color {
-    switch self {
-    case .red: return .red
-    case .blue: return .blue
-    case .green: return .green
-    case .yellow: return .yellow
-    }
-  }
-}
-
-/// ボード上の1マスを表す構造体
-/// empty: 駒なし
-/// occupied: 駒あり
-/// highlighted: ハイライトなどの用途で使用可能(必須ではない)
-enum Cell: Codable {
-  case empty
-  case occupied(pieceID: String, owner: PlayerColor)
-}
-
-enum PlacementError: Error, LocalizedError {
-  case outOfBounds
-  case cellOccupied
-  case firstMoveMustIncludeCorner
-  case mustTouchOwnPieceByCorner
-  case cannotShareEdgeWithOwnPiece
-  
-  var errorDescription: String? {
-    switch self {
-    case .outOfBounds:
-      return "ピースがボード外にはみ出しています"
-    case .cellOccupied:
-      return "その位置には既に駒が置かれています"
-    case .firstMoveMustIncludeCorner:
-      return "初回配置はプレイヤーのコーナーセルを含めなければなりません"
-    case .mustTouchOwnPieceByCorner:
-      return "自分の駒と少なくとも一つの角で接していません"
-    case .cannotShareEdgeWithOwnPiece:
-      return "自分の駒と辺で接してはいけません（角接触のみ可）"
-    }
-  }
-}
-
 /// Blokusのゲームボード全体を表す構造体
-/// デフォルトでは20x20のボードを用意する
 struct Board: Codable {
-  let width: Int
-  let height: Int
-  var cells: [[Cell]]
-  
-  var hasPlacedFirstPiece: [PlayerColor: Bool] = [
-    .red: false,
-    .blue: false,
-    .green: false,
-    .yellow: false
-  ]
-  
+  static let width = 20
+  static let height = 20
+
   // ハイライト用の座標集合を追加
   var highlightedCoordinates: Set<Coordinate> = []
-  
-  /// 指定した幅・高さで初期化する
-  init(width: Int = 20, height: Int = 20) {
-    self.width = width
-    self.height = height
-    self.cells = Array(
-      repeating: Array(repeating: Cell.empty, count: width),
-      count: height
-    )
-  }
+
+  var cells: [[Cell]] = Array(
+    repeating: Array(repeating: Cell.empty, count: Self.width),
+    count: Self.height
+  )
   
   /// 指定した座標がボード上に存在するかをチェック
   func isValidCoordinate(_ c: Coordinate) -> Bool {
-    return c.x >= 0 && c.x < width && c.y >= 0 && c.y < height
+    return c.x >= 0 && c.x < Self.width && c.y >= 0 && c.y < Self.height
   }
   
   /// 各プレイヤーの開始コーナーを返す
-  func startingCorner(for player: PlayerColor) -> Coordinate {
+  static func startingCorner(for player: PlayerColor) -> Coordinate {
     switch player {
     case .red:
       return Coordinate(x: 0, y: 0)
     case .blue:
-      return Coordinate(x: width - 1, y: 0)
+      return Coordinate(x: Self.width - 1, y: 0)
     case .green:
-      return Coordinate(x: width - 1, y: height - 1)
+      return Coordinate(x: Self.width - 1, y: Self.height - 1)
     case .yellow:
-      return Coordinate(x: 0, y: height - 1)
+      return Coordinate(x: 0, y: Self.height - 1)
+    }
+  }
+  
+  func hasPlacedFirstPiece(for player: PlayerColor) -> Bool {
+    let coordinate = Board.startingCorner(for: player)
+    switch cells[coordinate.y][coordinate.x] {
+    case .empty:
+      return false
+    case let .occupied(_, owner):
+      return owner == player
     }
   }
   
   func getPlayerCells(owner: PlayerColor) -> Set<Coordinate> {
     var result = Set<Coordinate>()
-    for y in 0..<height {
-      for x in 0..<width {
+    for y in 0..<Self.height {
+      for x in 0..<Self.width {
         if case let .occupied(_, cellOwner) = cells[y][x], cellOwner == owner {
           result.insert(Coordinate(x: x, y: y))
         }
@@ -226,11 +72,11 @@ struct Board: Codable {
       }
     }
     
-    let isFirstMove = (hasPlacedFirstPiece[piece.owner] == false)
+    let isFirstMove = !hasPlacedFirstPiece(for: piece.owner)
     
     // 初回配置チェック: コーナーセルを必ず含む
     if isFirstMove {
-      let corner = startingCorner(for: piece.owner)
+      let corner = Self.startingCorner(for: piece.owner)
       if !finalCoords.contains(corner) {
         throw PlacementError.firstMoveMustIncludeCorner
       }
@@ -280,11 +126,6 @@ struct Board: Codable {
     for bc in finalCoords {
       cells[bc.y][bc.x] = .occupied(pieceID: piece.id, owner: piece.owner)
     }
-    
-    // 初手完了フラグ更新
-    if isFirstMove {
-      hasPlacedFirstPiece[piece.owner] = true
-    }
   }
 }
 
@@ -312,10 +153,10 @@ extension Board {
       }
     }
     
-    let isFirstMove = (hasPlacedFirstPiece[piece.owner] == false)
+    let isFirstMove = !hasPlacedFirstPiece(for: piece.owner)
     
     if isFirstMove {
-      let corner = startingCorner(for: piece.owner)
+      let corner = Self.startingCorner(for: piece.owner)
       if !finalCoords.contains(corner) {
         return false
       }
@@ -362,8 +203,8 @@ extension Board {
   /// pieceを置ける場所をハイライトする
   mutating func highlightPossiblePlacements(for piece: Piece) {
     clearHighlights()
-    for y in 0..<height {
-      for x in 0..<width {
+    for y in 0..<Self.height {
+      for x in 0..<Self.width {
         let origin = Coordinate(x: x, y: y)
         if canPlacePiece(piece: piece, at: origin) {
           // ピースの形状全体をハイライト

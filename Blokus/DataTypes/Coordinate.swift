@@ -1,5 +1,11 @@
 import Foundation
 
+// 座標を表す構造体
+struct Coordinate: Codable, Hashable, Equatable {
+  let x: Int
+  let y: Int
+}
+
 let coordinates: [[Coordinate]] = [
   .a, .b, .c, .d, .e, .f, .g, .h, .i, .j,
   .k, .l,.m, .n, .o, .p, .q, .r, .s, .t, .u,

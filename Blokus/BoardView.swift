@@ -8,9 +8,9 @@ struct BoardView: View {
   
   var body: some View {
     Grid(horizontalSpacing: 0, verticalSpacing: 0) {
-      ForEach(0..<board.height, id: \.self) { row in
+      ForEach(0..<Board.height, id: \.self) { row in
         GridRow {
-          ForEach(0..<board.width, id: \.self) { col in
+          ForEach(0..<Board.width, id: \.self) { col in
             let c = Coordinate(x: col, y: row)
             let cell = board.cells[row][col]
             

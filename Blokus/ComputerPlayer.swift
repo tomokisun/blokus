@@ -41,8 +41,8 @@ struct ComputerPlayer {
           testPiece.orientation = Orientation(rotation: rotationCase, flipped: flippedCase)
           
           // ボード上の全マスを起点におけるか調べる
-          for y in 0..<board.height {
-            for x in 0..<board.width {
+          for y in 0..<Board.height {
+            for x in 0..<Board.width {
               let origin = Coordinate(x: x, y: y)
               if board.canPlacePiece(piece: testPiece, at: origin) {
                 // 配置可能な場所が見つかったので配置
