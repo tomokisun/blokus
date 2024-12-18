@@ -28,7 +28,7 @@ struct ContentView: View {
       ComputerPlayer(owner: .yellow, level: computerLevel)
     ]
   }
-  
+
   var body: some View {
     VStack(spacing: 20) {
       BoardView(board: $board) { coordinate in
