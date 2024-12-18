@@ -34,8 +34,14 @@ struct RootView: View {
           .navigationTitle(Text("Blokus App"))
       }
 
-    case let .playing(computerMode, level, isHighlight):
-      ContentView(isHighlight: isHighlight, computerMode: computerMode, computerLevel: level)
+    case let .playing(computerMode, computerLevel, isHighlight):
+      GameView(
+        store: Store(
+          isHighlight: isHighlight,
+          computerMode: computerMode,
+          computerLevel: computerLevel
+        )
+      )
     }
   }
 }

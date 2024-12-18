@@ -12,9 +12,14 @@ struct Candidate {
   let origin: Coordinate
 }
 
-struct ComputerPlayer {
+actor ComputerPlayer {
   let owner: PlayerColor
   let level: ComputerLevel
+  
+  init(owner: PlayerColor, level: ComputerLevel) {
+    self.owner = owner
+    self.level = level
+  }
   
   func moveCandidate(board: Board, pieces: [Piece]) -> Candidate? {
     let ownerPieces = getOwnedPieces(pieces: pieces)

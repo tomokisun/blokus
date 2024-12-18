@@ -10,7 +10,16 @@ import SwiftUI
   var pieces = Piece.allPieces
   var computerPlayers: [ComputerPlayer]
   
-  var pieceSelection: Piece?
+  var player = PlayerColor.red
+  var pieceSelection: Piece? {
+    didSet {
+      onChangePieces()
+    }
+  }
+  
+  var playerPieces: [Piece] {
+    pieces.filter { $0.owner == player }
+  }
   
   init(
     isHighlight: Bool,
@@ -50,6 +59,14 @@ import SwiftUI
     }
   }
 
+  func onChangePieces() {
+    guard isHighlight else { return }
+    if let piece = pieceSelection {
+      board.highlightPossiblePlacements(for: piece)
+    } else {
+      board.clearHighlights()
+    }
+  }
   
   // MARK: - Player
   func movePlayerPiece(at origin: Coordinate) {
@@ -58,23 +75,32 @@ import SwiftUI
       try board.placePiece(piece: piece, at: origin)
       
       withAnimation {
+        pieceSelection = nil
         if let index = pieces.firstIndex(where: { $0.id == piece.id }) {
           pieces.remove(at: index)
         }
+      } completion: {
+        Task(priority: .userInitiated) {
+          do {
+            try await self.moveComputerPlayer(self.computerPlayers[0])
+            try await self.moveComputerPlayer(self.computerPlayers[1])
+            try await self.moveComputerPlayer(self.computerPlayers[2])
+          } catch {
+            print(error)
+          }
+        }
       }
-      
-      try moveComputerPlayer(computerPlayers[0])
-      try moveComputerPlayer(computerPlayers[1])
-      try moveComputerPlayer(computerPlayers[2])
-
     } catch {
       print(error)
     }
   }
   
   // MARK: - Computer
-  private func moveComputerPlayer(_ computer: ComputerPlayer) throws {
-    if let candidate = computer.moveCandidate(board: board, pieces: pieces) {
+  private func moveComputerPlayer(_ computer: ComputerPlayer) async throws {
+    Task(priority: .userInitiated) {
+      
+    }
+    if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       
       withAnimation(.default) {
