@@ -12,9 +12,14 @@ struct Candidate {
   let origin: Coordinate
 }
 
-struct ComputerPlayer {
+actor ComputerPlayer {
   let owner: PlayerColor
   let level: ComputerLevel
+  
+  init(owner: PlayerColor, level: ComputerLevel) {
+    self.owner = owner
+    self.level = level
+  }
   
   func moveCandidate(board: Board, pieces: [Piece]) -> Candidate? {
     let ownerPieces = getOwnedPieces(pieces: pieces)
@@ -27,9 +32,11 @@ struct ComputerPlayer {
     
     switch level {
     case .easy:
-      break
+      // randomize the order of candidates
+      candidates = candidates.shuffled()
       
     case .normal:
+      // sort by the number of baseShape.count
       candidates = Dictionary(grouping: candidates, by: { $0.piece.baseShape.count })
         .mapValues { $0.shuffled() }
         .sorted(by: { $0.key > $1.key })

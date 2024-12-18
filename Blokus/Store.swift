@@ -10,7 +10,13 @@ import SwiftUI
   var pieces = Piece.allPieces
   var computerPlayers: [ComputerPlayer]
   
+  var player = PlayerColor.red
   var pieceSelection: Piece?
+  var thinkingState = ComputerThinkingState.idle
+
+  var playerPieces: [Piece] {
+    pieces.filter { $0.owner == player }
+  }
   
   init(
     isHighlight: Bool,
@@ -50,6 +56,14 @@ import SwiftUI
     }
   }
 
+  func updateBoardHighlights() {
+    guard isHighlight else { return }
+    if let piece = pieceSelection {
+      board.highlightPossiblePlacements(for: piece)
+    } else {
+      board.clearHighlights()
+    }
+  }
   
   // MARK: - Player
   func movePlayerPiece(at origin: Coordinate) {
@@ -58,23 +72,37 @@ import SwiftUI
       try board.placePiece(piece: piece, at: origin)
       
       withAnimation {
+        pieceSelection = nil
+        updateBoardHighlights()
         if let index = pieces.firstIndex(where: { $0.id == piece.id }) {
           pieces.remove(at: index)
         }
+      } completion: {
+        Task(priority: .userInitiated) {
+          await self.moveComputerPlayers()
+        }
       }
-      
-      try moveComputerPlayer(computerPlayers[0])
-      try moveComputerPlayer(computerPlayers[1])
-      try moveComputerPlayer(computerPlayers[2])
-
     } catch {
       print(error)
     }
   }
   
+  private func moveComputerPlayers() async {
+    for player in computerPlayers {
+      do {
+        thinkingState = .thinking(player.owner)
+        try await moveComputerPlayer(player)
+        thinkingState = .idle
+      } catch {
+        print(error)
+        thinkingState = .idle
+      }
+    }
+  }
+  
   // MARK: - Computer
-  private func moveComputerPlayer(_ computer: ComputerPlayer) throws {
-    if let candidate = computer.moveCandidate(board: board, pieces: pieces) {
+  private func moveComputerPlayer(_ computer: ComputerPlayer) async throws {
+    if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       
       withAnimation(.default) {

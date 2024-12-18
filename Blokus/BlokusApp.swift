@@ -13,7 +13,7 @@ struct BlokusApp: App {
   }
 }
 
-enum GameState {
+enum GameState: Equatable {
   case newGame
   case playing(computerMode: Bool, computerLevel: ComputerLevel, isHighlight: Bool)
 }
@@ -27,16 +27,25 @@ struct RootView: View {
   @State var state = GameState.newGame
   
   var body: some View {
-    switch state {
-    case .newGame:
-      NavigationStack {
-        NewGameView(state: $state)
-          .navigationTitle(Text("Blokus App"))
-      }
+    Group {
+      switch state {
+      case .newGame:
+        NavigationStack {
+          NewGameView(state: $state)
+            .navigationTitle(Text("Blokus App"))
+        }
 
-    case let .playing(computerMode, level, isHighlight):
-      ContentView(isHighlight: isHighlight, computerMode: computerMode, computerLevel: level)
+      case let .playing(computerMode, computerLevel, isHighlight):
+        GameView(
+          store: Store(
+            isHighlight: isHighlight,
+            computerMode: computerMode,
+            computerLevel: computerLevel
+          )
+        )
+      }
     }
+    .sensoryFeedback(.impact, trigger: state)
   }
 }
 
