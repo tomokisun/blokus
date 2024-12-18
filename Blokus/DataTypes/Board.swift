@@ -6,8 +6,8 @@ struct Board: Codable {
   static let height = 20
   
   var cells: [[Cell]] = Array(
-    repeating: Array(repeating: Cell.empty, count: Self.width),
-    count: Self.height
+    repeating: Array(repeating: Cell.empty, count: Board.width),
+    count: Board.height
   )
   
   // ハイライト用の座標集合
@@ -17,7 +17,7 @@ struct Board: Codable {
   
   /// 指定した座標がボード上に存在するかをチェック
   func isValidCoordinate(_ c: Coordinate) -> Bool {
-    return c.x >= 0 && c.x < Self.width && c.y >= 0 && c.y < Self.height
+    return c.x >= 0 && c.x < Board.width && c.y >= 0 && c.y < Board.height
   }
   
   /// ピースを配置するメソッド
@@ -48,8 +48,8 @@ struct Board: Codable {
   mutating func highlightPossiblePlacements(for piece: Piece) {
     clearHighlights()
     
-    for y in 0..<Self.height {
-      for x in 0..<Self.width {
+    for y in 0..<Board.height {
+      for x in 0..<Board.width {
         let origin = Coordinate(x: x, y: y)
         if canPlacePiece(piece: piece, at: origin) {
           let finalCoords = computeFinalCoordinates(for: piece, at: origin)
@@ -171,8 +171,8 @@ struct Board: Codable {
   
   private func getPlayerCells(owner: PlayerColor) -> Set<Coordinate> {
     var result = Set<Coordinate>()
-    for y in 0..<Self.height {
-      for x in 0..<Self.width {
+    for y in 0..<Board.height {
+      for x in 0..<Board.width {
         if case let .occupied(cellOwner) = cells[x][y], cellOwner == owner {
           result.insert(Coordinate(x: x, y: y))
         }
@@ -189,11 +189,11 @@ struct Board: Codable {
     case .red:
       return Coordinate(x: 0, y: 0)
     case .blue:
-      return Coordinate(x: Self.width - 1, y: 0)
+      return Coordinate(x: Board.width - 1, y: 0)
     case .green:
-      return Coordinate(x: Self.width - 1, y: Self.height - 1)
+      return Coordinate(x: Board.width - 1, y: Board.height - 1)
     case .yellow:
-      return Coordinate(x: 0, y: Self.height - 1)
+      return Coordinate(x: 0, y: Board.height - 1)
     }
   }
 }
