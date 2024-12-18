@@ -3,6 +3,7 @@ import SwiftUI
 struct GameView: View {
   @State var store: Store
   @Environment(\.cellSize) var cellSize
+  @State var isPresented = false
 
   var body: some View {
     VStack(spacing: 12) {
@@ -43,6 +44,12 @@ struct GameView: View {
           }
           
           Button {
+            isPresented = true
+          } label: {
+            Text("Replay")
+          }
+          
+          Button {
             store.flipPiece()
           } label: {
             Label("Flip", systemImage: "trapezoid.and.line.vertical")
@@ -73,6 +80,9 @@ struct GameView: View {
       .sensoryFeedback(.impact, trigger: store.pieceSelection)
       .sensoryFeedback(.impact, trigger: store.pieces)
       .sensoryFeedback(.impact, trigger: store.player)
+    }
+    .sheet(isPresented: $isPresented) {
+      ReplayView(store: ReplayStore(truns: store.trunRecorder.truns))
     }
   }
 }

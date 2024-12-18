@@ -157,6 +157,7 @@ import SwiftUI
   private func moveComputerPlayer(_ computer: Computer) async throws(PlacementError) {
     if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
+      await trunRecorder.recordPlaceAction(piece: candidate.piece, at: candidate.origin)
       
       withAnimation(.default) {
         if let index = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
