@@ -24,7 +24,7 @@ import SwiftUI
   var pieces = Piece.allPieces
   
   /// コンピュータプレイヤーのインスタンスを保持する配列です。
-  var computerPlayers: [ComputerPlayer]
+  var computerPlayers: [Computer]
   
   /// 現在ターンのプレイヤーの色を示します。
   var player = PlayerColor.red
@@ -58,9 +58,9 @@ import SwiftUI
     self.computerLevel = computerLevel
 
     self.computerPlayers = [
-      ComputerPlayer(owner: .blue, level: computerLevel),
-      ComputerPlayer(owner: .green, level: computerLevel),
-      ComputerPlayer(owner: .yellow, level: computerLevel)
+      ComputerBuilder.make(for: .blue, level: computerLevel),
+      ComputerBuilder.make(for: .green, level: computerLevel),
+      ComputerBuilder.make(for: .yellow, level: computerLevel)
     ]
   }
   
@@ -133,7 +133,8 @@ import SwiftUI
   private func moveComputerPlayers() async {
     for player in computerPlayers {
       do {
-        thinkingState = .thinking(player.owner)
+        let owner = await player.owner
+        thinkingState = .thinking(owner)
         try await moveComputerPlayer(player)
         thinkingState = .idle
       } catch {
@@ -149,7 +150,7 @@ import SwiftUI
   ///
   /// - Parameter computer: 思考・手番を実行するコンピュータプレイヤー。
   /// - Throws: 配置できない場合などエラーが発生する可能性があります。
-  private func moveComputerPlayer(_ computer: ComputerPlayer) async throws(PlacementError) {
+  private func moveComputerPlayer(_ computer: Computer) async throws(PlacementError) {
     if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       
