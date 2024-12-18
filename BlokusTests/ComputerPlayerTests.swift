@@ -17,30 +17,27 @@ struct ComputerPlayerTests {
   func testCPUFirstMove() async throws {
     var board = Board()
     // red用のピースを用意
-    var pieces = [makeSingleCellPiece(owner: .red)]
+    let pieces = [makeSingleCellPiece(owner: .red)]
     
-    var cpu = ComputerPlayer(owner: .red, level: .easy)
-    cpu.performCPUMove(board: &board, pieces: &pieces)
+    let cpu = ComputerPlayer(owner: .red, level: .easy)
+    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+      try board.placePiece(piece: candidate.piece, at: candidate.origin)
+    }
     
     // redは初手で(0,0)が配置できるはず
-    // 初手がうまくいっていれば piecesから削除されている
-    #expect(pieces.isEmpty == true)
     #expect(board.cells[0][0] == .occupied(owner: .red))
   }
   
   @Test
   func testCPUNoMovesPass() async throws {
-    var board = Board()
+    let board = Board()
     // redはピースを持っていない
-    var pieces: [Piece] = []
+    let pieces: [Piece] = []
     
-    var cpu = ComputerPlayer(owner: .red, level: .easy)
-    // 出力確認は難しいが、ここではpiecesやboardが変わらないことを確認
-    cpu.performCPUMove(board: &board, pieces: &pieces)
+    let cpu = ComputerPlayer(owner: .red, level: .easy)
     
     #expect(pieces.isEmpty == true)
-    // 何も置かれていない
-    #expect(board.cells[0][0] == Cell.empty)
+    #expect(cpu.moveCandidate(board: board, pieces: pieces) == nil)
   }
   
   @Test
@@ -58,12 +55,13 @@ struct ComputerPlayerTests {
     pieces.removeFirst() // 初手済みピース除去
     
     // Now CPUの2手目
-    var cpu = ComputerPlayer(owner: .red, level: .easy)
-    cpu.performCPUMove(board: &board, pieces: &pieces)
+    let cpu = ComputerPlayer(owner: .red, level: .easy)
+    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+      try board.placePiece(piece: candidate.piece, at: candidate.origin)
+    }
     
     // 2手目は(1,1)等、斜め接触できる位置に置くはず
     // 場所はCPUロジックが探すので(1,1)を期待
-    #expect(pieces.isEmpty == true)
     #expect(board.cells[1][1] == Cell.occupied(owner: .red))
   }
   
@@ -88,18 +86,27 @@ struct ComputerPlayerTests {
     var pieces = [bigPiece, mediumPiece, smallPiece]
     
     // 初手は必ずコーナーを含む必要があるので、一番大きなピースでも(0,0)を含む直線であれば置けるはず。
-    var cpu = ComputerPlayer(owner: .red, level: .normal)
-    cpu.performCPUMove(board: &board, pieces: &pieces)
+    let cpu = ComputerPlayer(owner: .red, level: .normal)
+    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+      #expect(candidate.piece.id == bigPiece.id)
+      try board.placePiece(piece: candidate.piece, at: candidate.origin)
+      pieces.removeAll(where: { $0.id == candidate.piece.id })
+    }
     
-    // normalレベルでは大きいピースを優先して試すため、bigPieceが最初に配置される可能性が高い
-    // （ロジック上、bigPieceが最初に試されるはず）
+    // normalレベルでは大きいピースを優先して試すため、bigPieceが最初に配置される
     // bigPieceが(0,0)を含んで水平に配置されることで初手成功
-    #expect(pieces.count == 2) // bigPieceが消えたはず
+    #expect(board.cells[0][0] == Cell.occupied(owner: .red))
+    #expect(pieces.count == 2)
     
-    // 次の手でmediumPieceかsmallPieceを置いてみる(オプション)
-    cpu.performCPUMove(board: &board, pieces: &pieces)
-    // mediumPieceまたはsmallPieceが配置されているはず
-    #expect(pieces.count == 1) // もう一つ消える
+    // 次の手でmediumPieceを置いてみる
+    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+      #expect(candidate.piece.id == mediumPiece.id)
+      try board.placePiece(piece: candidate.piece, at: candidate.origin)
+      pieces.removeAll(where: { $0.id == candidate.piece.id })
+    }
+
+    // mediumPieceが配置されているはず
+    #expect(pieces == [smallPiece])
   }
   
   @Test
@@ -114,13 +121,15 @@ struct ComputerPlayerTests {
     }
     
     // redがピースを持っていても置く場所ない
-    var pieces: [Piece] = [
+    let pieces: [Piece] = [
       makeSingleCellPiece(owner: .red),
       makeSingleCellPiece(owner: .red)
     ]
     
-    var cpu = ComputerPlayer(owner: .red, level: .easy)
-    cpu.performCPUMove(board: &board, pieces: &pieces)
+    let cpu = ComputerPlayer(owner: .red, level: .easy)
+    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+      try board.placePiece(piece: candidate.piece, at: candidate.origin)
+    }
     
     // 置けないのでパス。piecesはそのまま
     #expect(pieces.count == 2)
@@ -132,13 +141,14 @@ struct ComputerPlayerTests {
     var board = Board()
     // redの初手用ピース
     let p = makeSingleCellPiece(owner: .red)
-    var pieces = [p]
+    let pieces = [p]
     
-    var cpu = ComputerPlayer(owner: .red, level: .easy)
-    cpu.performCPUMove(board: &board, pieces: &pieces)
+    let cpu = ComputerPlayer(owner: .red, level: .easy)
+    if let candidate = cpu.moveCandidate(board: board, pieces: pieces) {
+      try board.placePiece(piece: candidate.piece, at: candidate.origin)
+    }
     
     // 初手成功でpiecesは空になる
-    #expect(pieces.isEmpty == true)
     #expect(board.cells[0][0] == Cell.occupied(owner: .red))
   }
 }
