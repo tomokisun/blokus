@@ -29,7 +29,7 @@ struct Board: Codable {
     
     // 配置確定
     for bc in finalCoords {
-      cells[bc.y][bc.x] = .occupied(pieceID: piece.id, owner: piece.owner)
+      cells[bc.y][bc.x] = .occupied(owner: piece.owner)
     }
   }
   
@@ -164,7 +164,7 @@ struct Board: Codable {
     switch cells[coordinate.y][coordinate.x] {
     case .empty:
       return false
-    case let .occupied(_, owner):
+    case let .occupied(owner):
       return owner == player
     }
   }
@@ -173,7 +173,7 @@ struct Board: Codable {
     var result = Set<Coordinate>()
     for y in 0..<Self.height {
       for x in 0..<Self.width {
-        if case let .occupied(_, cellOwner) = cells[y][x], cellOwner == owner {
+        if case let .occupied(cellOwner) = cells[y][x], cellOwner == owner {
           result.insert(Coordinate(x: x, y: y))
         }
       }

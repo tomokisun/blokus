@@ -24,7 +24,7 @@ struct BoardView: View {
                   .fill(isHighlighted ? Color.purple.opacity(0.4) : Color.gray.opacity(0.2))
                   .frame(width: cellSize, height: cellSize)
 
-              case let .occupied(_, owner):
+              case let .occupied(owner):
                 Rectangle()
                   .fill(owner.color)
                   .frame(width: cellSize, height: cellSize)
