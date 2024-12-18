@@ -2,88 +2,111 @@ import Foundation
 
 actor ComputerHard: Computer {
   let owner: PlayerColor
-
+  
   init(owner: PlayerColor) {
     self.owner = owner
   }
   
   func moveCandidate(board: Board, pieces: [Piece]) -> Candidate? {
-    let ownerPieces = getPlayerPieces(from: pieces, owner: owner)
-    guard !ownerPieces.isEmpty else {
+    let myPieces = getPlayerPieces(from: pieces, owner: owner)
+    guard !myPieces.isEmpty else {
       print("CPU(\(owner)) has no pieces left and passes.")
       return nil
     }
     
-    let candidates = computeCandidateMoves(board: board, pieces: ownerPieces)
-    let evaluated = evaluateHardCandidates(candidates, board: board)
-
-    guard let candidate = evaluated.first else {
+    // 最大ピースサイズ
+    let maxPieceSize = myPieces.map(\.baseShape.count).max() ?? 0
+    let currentCellsSize = getPlayerCells(from: board, owner: owner).count
+    let theoreticalMax = Double(maxPieceSize * 2) + Double(currentCellsSize)
+    
+    print("maxPieceSize: \(maxPieceSize)")
+    print("theoreticalMax: \(theoreticalMax)")
+    
+    var firstMoves = computeCandidateMoves(board: board, pieces: myPieces)
+    firstMoves = Dictionary(grouping: firstMoves, by: { $0.piece.baseShape.count })
+      .mapValues { $0.shuffled() }
+      .sorted(by: { $0.key > $1.key })
+      .flatMap(\.value)
+    
+    guard !firstMoves.isEmpty else {
       print("CPU(\(owner)) cannot place any piece and passes.")
       return nil
     }
     
-    return makeCandidate(for: candidate)
-  }
-  
-  // MARK: - Hard Level Private Helpers
-  
-  /// Hardレベル用の候補手評価メソッド
-  ///
-  /// Normalレベルの基準（サイズでの優先）に加え、
-  /// 自身のコマとの角接触が多い候補手をより優先します。
-  ///
-  /// - Parameters:
-  ///   - candidates: 元となる候補手一覧
-  ///   - board: 現在のボード状態
-  /// - Returns: Hardレベルに基づいてソートした候補手一覧
-  private func evaluateHardCandidates(_ candidates: [CandidateMove], board: Board) -> [CandidateMove] {
-    let playerCells = getPlayerCells(from: board, owner: owner)
+    var bestScore = -Double.infinity
+    var bestMove: CandidateMove? = nil
     
-    // 各候補手に対して、(CandidateMove, 角接触数) をタプルで持たせる
-    let scoredCandidates = candidates.map { candidate -> (CandidateMove, Int) in
-      let piece = candidateToPiece(candidate: candidate)
-      let coords = computeFinalCoordinates(for: piece, at: candidate.origin)
-      let diagonalCount = coords.reduce(0) { sum, coord in
-        sum + diagonalTouchCount(coord, playerCells: playerCells)
+    firstMoveLoop: for firstMove in firstMoves {
+      // 初手シミュレーション
+      var boardAfterFirst = board
+      try? boardAfterFirst.placePiece(piece: applyOrientation(firstMove), at: firstMove.origin)
+      
+      // 相手はパス: boardAfterFirstそのまま
+      
+      // 2手目候補を計算
+      let usedPieces = myPiecesAfterUsing(firstMove, from: myPieces)
+      let secondMoves = computeCandidateMoves(board: boardAfterFirst, pieces: usedPieces)
+      
+      if secondMoves.isEmpty {
+        // 2手目なし: この時点での占有数
+        let myCells = getPlayerCells(from: boardAfterFirst, owner: owner)
+        let score = Double(myCells.count)
+        if score > bestScore {
+          bestScore = score
+          bestMove = firstMove
+        }
+        // 理論値到達チェック(2手目なしでも最大化は難しいが一応)
+        if score == theoreticalMax {
+          // 理論値達成 ⇒ 即終了
+          break firstMoveLoop
+        }
+      } else {
+        var bestSecondScore = -Double.infinity
+        secondMoveLoop: for secondMove in secondMoves {
+          var boardAfterSecond = boardAfterFirst
+          try? boardAfterSecond.placePiece(piece: applyOrientation(secondMove), at: secondMove.origin)
+          
+          let myCells = getPlayerCells(from: boardAfterSecond, owner: owner)
+          let score = Double(myCells.count)
+          print("score: \(score)")
+          if score > bestSecondScore {
+            bestSecondScore = score
+          }
+          // 理論値到達チェック
+          if score == theoreticalMax {
+            bestSecondScore = score
+            break secondMoveLoop
+          }
+        }
+        
+        // bestSecondScoreがこの初手に対する最良2手目スコア
+        if bestSecondScore > bestScore {
+          bestScore = bestSecondScore
+          bestMove = firstMove
+        }
+        if bestScore == theoreticalMax {
+          // 理論値達成 ⇒ 他の初手を見る必要なし
+          break firstMoveLoop
+        }
       }
-      return (candidate, diagonalCount)
     }
     
-    // ソート基準:
-    // 1. ピースサイズ大きい方が上位
-    // 2. 同プレイヤーセルとの角接触数が多い方が上位
-    return scoredCandidates.sorted { a, b in
-      let aSize = a.0.piece.baseShape.count
-      let bSize = b.0.piece.baseShape.count
-      if aSize == bSize {
-        return a.1 > b.1
-      } else {
-        return aSize > bSize
-      }
-    }.map { $0.0 }
+    guard let finalMove = bestMove else {
+      print("CPU(\(owner)) cannot find beneficial move, passes.")
+      return nil
+    }
+    
+    return makeCandidate(for: finalMove)
   }
   
-  /// 候補手(`CandidateMove`)から実際の `Piece` インスタンス（正しいオリエンテーション付き）を生成します。
-  private func candidateToPiece(candidate: CandidateMove) -> Piece {
-    var piece = candidate.piece
-    piece.orientation = Orientation(rotation: candidate.rotation, flipped: candidate.flipped)
-    return piece
+  // 使用したmove.pieceを取り除く
+  func myPiecesAfterUsing(_ move: CandidateMove, from: [Piece]) -> [Piece] {
+    return from.filter { $0.id != move.piece.id }
   }
   
-  /// ピースを指定座標へ置いた場合の占有セル群を計算します。
-  private func computeFinalCoordinates(for piece: Piece, at origin: Coordinate) -> [Coordinate] {
-    let shape = piece.transformedShape()
-    return shape.map { Coordinate(x: origin.x + $0.x, y: origin.y + $0.y) }
-  }
-  
-  /// 指定セルがプレイヤーセルと何箇所の斜め方向で接触しているか数えます。
-  private func diagonalTouchCount(_ coord: Coordinate, playerCells: Set<Coordinate>) -> Int {
-    let neighborsDiagonal = [
-      Coordinate(x: coord.x-1, y: coord.y-1),
-      Coordinate(x: coord.x+1, y: coord.y-1),
-      Coordinate(x: coord.x-1, y: coord.y+1),
-      Coordinate(x: coord.x+1, y: coord.y+1)
-    ]
-    return neighborsDiagonal.filter { playerCells.contains($0) }.count
+  func applyOrientation(_ move: CandidateMove) -> Piece {
+    var p = move.piece
+    p.orientation = Orientation(rotation: move.rotation, flipped: move.flipped)
+    return p
   }
 }

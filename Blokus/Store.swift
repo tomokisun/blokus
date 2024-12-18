@@ -60,9 +60,9 @@ import SwiftUI
     self.computerLevel = computerLevel
 
     self.computerPlayers = [
-      ComputerBuilder.make(for: .blue, level: computerLevel),
-      ComputerBuilder.make(for: .green, level: computerLevel),
-      ComputerBuilder.make(for: .yellow, level: computerLevel)
+      computerLevel.makeComputer(for: .blue),
+      computerLevel.makeComputer(for: .green),
+      computerLevel.makeComputer(for: .yellow)
     ]
   }
   
