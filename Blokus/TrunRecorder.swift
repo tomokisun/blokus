@@ -3,7 +3,7 @@ import Foundation
 actor TrunRecorder {
   var truns: [Trun] = []
   
-  func currentIndexOf(owner: PlayerColor) -> Int {
+  func currentIndexOf(owner: Player) -> Int {
     truns.filter { $0.owner == owner }.count
   }
   
@@ -13,7 +13,7 @@ actor TrunRecorder {
     truns.append(Trun(index: index, action: action, owner: piece.owner))
   }
 
-  func recordPassAction(owner: PlayerColor) {
+  func recordPassAction(owner: Player) {
     let index = currentIndexOf(owner: owner)
     truns.append(Trun(index: index, action: .pass, owner: owner))
   }

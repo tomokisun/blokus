@@ -3,7 +3,7 @@ import Foundation
 struct Trun: Equatable, Codable {
   let index: Int
   let action: TrunAction
-  let owner: PlayerColor
+  let owner: Player
 }
 
 enum TrunAction: Equatable, Codable {

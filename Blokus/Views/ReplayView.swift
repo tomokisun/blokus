@@ -88,7 +88,7 @@ struct ReplayView: View {
   var body: some View {
     VStack(spacing: 20) {
       LazyVGrid(columns: Array(repeating: GridItem(spacing: 0), count: 2), spacing: 0) {
-        ForEach(PlayerColor.allCases, id: \.color) { playerColor in
+        ForEach(Player.allCases, id: \.color) { playerColor in
           let point = store.board.score(for: playerColor)
           Text("\(point)pt")
             .frame(height: 32)

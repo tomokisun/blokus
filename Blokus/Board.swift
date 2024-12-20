@@ -28,7 +28,7 @@ struct Board {
   ///
   /// - Parameter player: スコアを取得したいプレイヤー色
   /// - Returns: 該当プレイヤーのセル数（スコア）
-  func score(for player: PlayerColor) -> Int {
+  func score(for player: Player) -> Int {
     let playerCells = getPlayerCells(owner: player)
     return playerCells.count
   }
@@ -214,7 +214,7 @@ struct Board {
   ///
   /// - Parameter player: チェックするプレイヤー色
   /// - Returns: 最初のピースが配置済みなら `true`、未配置なら `false`
-  private func hasPlacedFirstPiece(for player: PlayerColor) -> Bool {
+  private func hasPlacedFirstPiece(for player: Player) -> Bool {
     let coordinate = Board.startingCorner(for: player)
     switch cells[coordinate.x][coordinate.y] {
     case .empty:
@@ -228,7 +228,7 @@ struct Board {
   ///
   /// - Parameter owner: プレイヤー色
   /// - Returns: 占有セル座標のセット
-  private func getPlayerCells(owner: PlayerColor) -> Set<Coordinate> {
+  private func getPlayerCells(owner: Player) -> Set<Coordinate> {
     var result = Set<Coordinate>()
     for y in 0..<Board.height {
       for x in 0..<Board.width {
@@ -246,7 +246,7 @@ struct Board {
   ///
   /// - Parameter player: コーナーを取得したいプレイヤー色
   /// - Returns: プレイヤー開始地点の座標
-  static func startingCorner(for player: PlayerColor) -> Coordinate {
+  static func startingCorner(for player: Player) -> Coordinate {
     switch player {
     case .red:
       return Coordinate(x: 0, y: 0)

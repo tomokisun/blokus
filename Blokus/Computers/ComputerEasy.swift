@@ -1,9 +1,9 @@
 import Foundation
 
 actor ComputerEasy: Computer {
-  let owner: PlayerColor
+  let owner: Player
 
-  init(owner: PlayerColor) {
+  init(owner: Player) {
     self.owner = owner
   }
 

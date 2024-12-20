@@ -1,9 +1,9 @@
 import Foundation
 
 protocol Computer: Actor {
-  var owner: PlayerColor { get }
+  var owner: Player { get }
   
-  init(owner: PlayerColor)
+  init(owner: Player)
   
   /// コンピュータプレイヤーが次に行うべき配置手を計算して返します。
   /// ボード上に配置できる最適な候補を探索し、思考レベルに応じたフィルタリングを行います。
@@ -22,12 +22,12 @@ extension Computer {
     return Candidate(piece: bestPiece, origin: move.origin)
   }
   
-  func getPlayerPieces(from pieces: [Piece], owner: PlayerColor) -> [Piece] {
+  func getPlayerPieces(from pieces: [Piece], owner: Player) -> [Piece] {
     return pieces.filter { $0.owner == owner }
   }
   
   /// ボードから指定プレイヤーのセルを取得します。
-  func getPlayerCells(from board: Board, owner: PlayerColor) -> Set<Coordinate> {
+  func getPlayerCells(from board: Board, owner: Player) -> Set<Coordinate> {
     var result = Set<Coordinate>()
     for y in 0..<Board.height {
       for x in 0..<Board.width {

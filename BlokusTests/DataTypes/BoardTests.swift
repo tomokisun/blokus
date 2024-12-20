@@ -4,7 +4,7 @@ import Testing
 struct BoardTests {
   
   /// 単純な1マスのピースを作るためのヘルパー
-  private func makeSingleCellPiece(owner: PlayerColor, rotation: Rotation = .none, flipped: Bool = false) -> Piece {
+  private func makeSingleCellPiece(owner: Player, rotation: Rotation = .none, flipped: Bool = false) -> Piece {
     // (0,0)をbaseShapeとし、初期状態は指定のorientationを反映
     return Piece(
       id: "\(owner.rawValue)-single-\(rotation.rawValue)-\(flipped)",
@@ -34,7 +34,7 @@ struct BoardTests {
     let piece = makeSingleCellPiece(owner: .red)
     let origin = Coordinate(x: 0, y: 0)
     try board.placePiece(piece: piece, at: origin)
-    #expect(board.cells[0][0] == Cell.occupied(owner: PlayerColor.red))
+    #expect(board.cells[0][0] == Cell.occupied(owner: Player.red))
   }
   
   @Test
@@ -60,7 +60,7 @@ struct BoardTests {
     
     let piece2 = makeSingleCellPiece(owner: .red)
     try board.placePiece(piece: piece2, at: Coordinate(x: 1, y: 1))
-    #expect(board.cells[1][1] == Cell.occupied(owner: PlayerColor.red))
+    #expect(board.cells[1][1] == Cell.occupied(owner: Player.red))
   }
   
   @Test
@@ -69,7 +69,7 @@ struct BoardTests {
     let piece1 = makeSingleCellPiece(owner: .yellow)
     // 初手: 左下コーナー(yellow)
     try board.placePiece(piece: piece1, at: Coordinate(x: 0, y: Board.height-1))
-    #expect(board.cells[0][Board.height-1] == Cell.occupied(owner: PlayerColor.yellow))
+    #expect(board.cells[0][Board.height-1] == Cell.occupied(owner: Player.yellow))
     
     let piece2 = makeSingleCellPiece(owner: .yellow)
     // 辺で接触するのみ(隣り合わせに置く)→失敗

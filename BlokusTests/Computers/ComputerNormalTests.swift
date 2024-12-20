@@ -2,7 +2,7 @@ import Testing
 @testable import Blokus
 
 struct ComputerNormalTests {
-  private func makeSingleCellPiece(owner: PlayerColor) -> Piece {
+  private func makeSingleCellPiece(owner: Player) -> Piece {
     Piece(
       id: "\(owner.rawValue)-single",
       owner: owner,
@@ -14,7 +14,7 @@ struct ComputerNormalTests {
   @Test
   func testCPUFirstMove() async throws {
     var board = Board()
-    let owner: PlayerColor = .red
+    let owner: Player = .red
     let pieces = [makeSingleCellPiece(owner: owner)]
     let computer = ComputerNormal(owner: .red)
     
@@ -37,7 +37,7 @@ struct ComputerNormalTests {
   @Test
   func testCPUSecondMoveCornerTouch() async throws {
     var board = Board()
-    let owner = PlayerColor.red
+    let owner = Player.red
     var pieces = [
       makeSingleCellPiece(owner: owner),
       makeSingleCellPiece(owner: owner)
@@ -60,7 +60,7 @@ struct ComputerNormalTests {
   @Test
   func testCPUWithMultiplePiecesNormalLevel() async throws {
     var board = Board()
-    let owner = PlayerColor.red
+    let owner = Player.red
     // 5 cell piece
     let bigPiece = Piece(
       id: "red-big",
@@ -105,7 +105,7 @@ struct ComputerNormalTests {
   func testCPUCannotPlacePass() async throws {
     // CPUはピースを持つが、ボードが全部埋まっていて置けないケース
     var board = Board()
-    let owner = PlayerColor.red
+    let owner = Player.red
     // 全セルをfake占有
     for y in 0..<Board.height {
       for x in 0..<Board.width {

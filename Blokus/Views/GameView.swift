@@ -23,7 +23,7 @@ struct GameView: View {
       
       VStack(spacing: 12) {
         Picker(selection: $store.player) {
-          ForEach(PlayerColor.allCases, id: \.color) { playerColor in
+          ForEach(Player.allCases, id: \.color) { playerColor in
             let point = store.board.score(for: playerColor)
             let text = "\(playerColor.rawValue): \(point)pt"
             Text(text)

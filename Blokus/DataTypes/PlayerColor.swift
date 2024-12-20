@@ -1,15 +1,15 @@
 import SwiftUI
 
 // プレイヤーの色
-enum PlayerColor: String, Codable, Equatable, CaseIterable {
+enum Player: String, Codable, Equatable, CaseIterable {
   case red = "Red"
   case blue = "Blue"
   case green = "Green"
   case yellow = "Yellow"
 }
 
-// PlayerColorをSwiftUIのColorへ変換するための拡張
-extension PlayerColor {
+// PlayerをSwiftUIのColorへ変換するための拡張
+extension Player {
   var color: Color {
     switch self {
     case .red: return .red

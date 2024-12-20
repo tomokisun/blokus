@@ -2,7 +2,7 @@ import Testing
 @testable import Blokus
 
 struct ComputerEasyTests {
-  private func makeSingleCellPiece(owner: PlayerColor) -> Piece {
+  private func makeSingleCellPiece(owner: Player) -> Piece {
     Piece(
       id: "\(owner.rawValue)-single",
       owner: owner,
@@ -14,7 +14,7 @@ struct ComputerEasyTests {
   @Test
   func testMoveCandidate_withAvailablePieces_returnsCandidate() async {
     let board = Board()
-    let owner: PlayerColor = .red
+    let owner: Player = .red
     let pieces = [makeSingleCellPiece(owner: owner)]
     let computer = ComputerEasy(owner: owner)
     
@@ -27,7 +27,7 @@ struct ComputerEasyTests {
   @Test
   func testMoveCandidate_withNoOwnedPieces_returnsNil() async {
     let board = Board()
-    let owner: PlayerColor = .blue
+    let owner: Player = .blue
     // オーナーredのピースしかないため、blueには何もない状況
     let pieces = [makeSingleCellPiece(owner: .red)]
     let computer = ComputerEasy(owner: owner)
@@ -40,7 +40,7 @@ struct ComputerEasyTests {
   @Test
   func testMoveCandidate_withNoPlacableLocations_returnsNil() async {
     var board = Board()
-    let owner: PlayerColor = .red
+    let owner: Player = .red
     let pieces = [makeSingleCellPiece(owner: owner)]
     let computer = ComputerEasy(owner: owner)
     

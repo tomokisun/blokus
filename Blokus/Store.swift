@@ -27,7 +27,7 @@ import SwiftUI
   var computerPlayers: [Computer]
   
   /// 現在ターンのプレイヤーの色を示します。
-  var player = PlayerColor.red
+  var player = Player.red
   
   let trunRecorder = TrunRecorder()
   
