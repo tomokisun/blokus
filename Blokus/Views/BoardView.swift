@@ -8,25 +8,21 @@ struct BoardView: View {
   
   var body: some View {
     Grid(horizontalSpacing: 0, verticalSpacing: 0) {
-      ForEach(0..<Board.height, id: \.self) { row in
+      ForEach(0..<Board.width, id: \.self) { row in
         GridRow {
-          ForEach(0..<Board.width, id: \.self) { col in
-            let c = Coordinate(x: col, y: row)
-            let cell = board.cells[col][row]
-            
-            // ハイライト判定
+          ForEach(0..<Board.height, id: \.self) { column in
+            let c = Coordinate(x: column, y: row)
             let isHighlighted = board.highlightedCoordinates.contains(c)
+            let cell = board.cells[row][column]
             
             Group {
-              switch cell {
-              case .empty:
-                Rectangle()
-                  .fill(isHighlighted ? Color.purple.opacity(0.4) : Color.gray.opacity(0.2))
-                  .frame(width: cellSize, height: cellSize)
-
-              case let .occupied(owner):
+              if let owner = cell.owner {
                 Rectangle()
                   .fill(owner.color)
+                  .frame(width: cellSize, height: cellSize)
+              } else {
+                Rectangle()
+                  .fill(isHighlighted ? Color.purple.opacity(0.4) : Color.gray.opacity(0.2))
                   .frame(width: cellSize, height: cellSize)
               }
             }

@@ -13,7 +13,7 @@ struct Board {
   
   /// ボード上のセルを管理する2次元配列。`Cell`型で状況を表します。
   var cells: [[Cell]] = Array(
-    repeating: Array(repeating: Cell.empty, count: Board.width),
+    repeating: Array(repeating: Cell(owner: nil), count: Board.width),
     count: Board.height
   )
   
@@ -54,7 +54,7 @@ struct Board {
     
     // 配置確定
     for bc in finalCoords {
-      cells[bc.x][bc.y] = .occupied(owner: piece.owner)
+      cells[bc.x][bc.y] = Cell(owner: piece.owner)
     }
   }
   
@@ -136,7 +136,7 @@ struct Board {
       guard isValidCoordinate(bc) else {
         throw PlacementError.outOfBounds
       }
-      if case .occupied = cells[bc.x][bc.y] {
+      if cells[bc.x][bc.y].owner != nil {
         throw PlacementError.cellOccupied
       }
     }
@@ -216,12 +216,8 @@ struct Board {
   /// - Returns: 最初のピースが配置済みなら `true`、未配置なら `false`
   private func hasPlacedFirstPiece(for player: Player) -> Bool {
     let coordinate = Board.startingCorner(for: player)
-    switch cells[coordinate.x][coordinate.y] {
-    case .empty:
-      return false
-    case let .occupied(owner):
-      return owner == player
-    }
+    let cell = cells[coordinate.x][coordinate.y]
+    return cell.owner == player
   }
   
   /// 指定プレイヤーが占有するセルすべてを取得します。
@@ -230,9 +226,9 @@ struct Board {
   /// - Returns: 占有セル座標のセット
   private func getPlayerCells(owner: Player) -> Set<Coordinate> {
     var result = Set<Coordinate>()
-    for y in 0..<Board.height {
-      for x in 0..<Board.width {
-        if case let .occupied(cellOwner) = cells[x][y], cellOwner == owner {
+    for x in 0..<Board.width {
+      for y in 0..<Board.height {
+        if cells[x][y].owner == owner {
           result.insert(Coordinate(x: x, y: y))
         }
       }

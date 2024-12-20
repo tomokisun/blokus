@@ -29,9 +29,9 @@ extension Computer {
   /// ボードから指定プレイヤーのセルを取得します。
   func getPlayerCells(from board: Board, owner: Player) -> Set<Coordinate> {
     var result = Set<Coordinate>()
-    for y in 0..<Board.height {
-      for x in 0..<Board.width {
-        if case let .occupied(cellOwner) = board.cells[x][y], cellOwner == owner {
+    for x in 0..<Board.width {
+      for y in 0..<Board.height {
+        if board.cells[x][y].owner == owner {
           result.insert(Coordinate(x: x, y: y))
         }
       }

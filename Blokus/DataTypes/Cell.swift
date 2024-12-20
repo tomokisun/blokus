@@ -1,6 +1,5 @@
 import Foundation
 
-enum Cell: Codable, Equatable {
-  case empty
-  case occupied(owner: Player)
+struct Cell: Codable, Equatable {
+  let owner: Player?
 }

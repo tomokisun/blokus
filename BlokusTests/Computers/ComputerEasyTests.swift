@@ -47,7 +47,7 @@ struct ComputerEasyTests {
     // 全てのセルをオーナーblueで埋める(占有状態)ことでredのコマが置けない状態を作る
     for x in 0..<Board.width {
       for y in 0..<Board.height {
-        board.cells[x][y] = .occupied(owner: .blue)
+        board.cells[x][y] = Cell(owner: .blue)
       }
     }
     

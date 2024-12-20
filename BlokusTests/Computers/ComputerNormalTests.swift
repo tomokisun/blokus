@@ -22,7 +22,7 @@ struct ComputerNormalTests {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
     }
     
-    #expect(board.cells[0][0] == .occupied(owner: owner), "初手で(0,0)に配置されるはず")
+    #expect(board.cells[0][0] == Cell(owner: owner), "初手で(0,0)に配置されるはず")
   }
   
   @Test
@@ -54,7 +54,7 @@ struct ComputerNormalTests {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
     }
     
-    #expect(board.cells[1][1] == Cell.occupied(owner: owner), "2手目で(1,1)に配置される")
+    #expect(board.cells[1][1] == Cell(owner: owner), "2手目で(1,1)に配置される")
   }
   
   @Test
@@ -88,7 +88,7 @@ struct ComputerNormalTests {
       pieces.removeAll(where: { $0.id == candidate.piece.id })
     }
     
-    #expect(board.cells[0][0] == Cell.occupied(owner: owner))
+    #expect(board.cells[0][0] == Cell(owner: owner))
     #expect(pieces.count == 2)
     
     // 2手目
@@ -107,9 +107,9 @@ struct ComputerNormalTests {
     var board = Board()
     let owner = Player.red
     // 全セルをfake占有
-    for y in 0..<Board.height {
-      for x in 0..<Board.width {
-        board.cells[y][x] = .occupied(owner: .blue)
+    for x in 0..<Board.width {
+      for y in 0..<Board.height {
+        board.cells[y][x] = Cell(owner: .blue)
       }
     }
     

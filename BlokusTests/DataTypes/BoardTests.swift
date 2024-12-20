@@ -34,7 +34,7 @@ struct BoardTests {
     let piece = makeSingleCellPiece(owner: .red)
     let origin = Coordinate(x: 0, y: 0)
     try board.placePiece(piece: piece, at: origin)
-    #expect(board.cells[0][0] == Cell.occupied(owner: Player.red))
+    #expect(board.cells[0][0] == Cell(owner: Player.red))
   }
   
   @Test
@@ -60,7 +60,7 @@ struct BoardTests {
     
     let piece2 = makeSingleCellPiece(owner: .red)
     try board.placePiece(piece: piece2, at: Coordinate(x: 1, y: 1))
-    #expect(board.cells[1][1] == Cell.occupied(owner: Player.red))
+    #expect(board.cells[1][1] == Cell(owner: Player.red))
   }
   
   @Test
@@ -69,7 +69,7 @@ struct BoardTests {
     let piece1 = makeSingleCellPiece(owner: .yellow)
     // 初手: 左下コーナー(yellow)
     try board.placePiece(piece: piece1, at: Coordinate(x: 0, y: Board.height-1))
-    #expect(board.cells[0][Board.height-1] == Cell.occupied(owner: Player.yellow))
+    #expect(board.cells[0][Board.height-1] == Cell(owner: Player.yellow))
     
     let piece2 = makeSingleCellPiece(owner: .yellow)
     // 辺で接触するのみ(隣り合わせに置く)→失敗
@@ -105,9 +105,9 @@ struct BoardTests {
     // 初手なのでコーナー含めなければならない
     // L字をそのまま(0,0)に配置すると、(0,0),(0,1),(1,1)が使用され、(0,0)はコーナー含むのでOK
     try board.placePiece(piece: piece, at: Coordinate(x:0,y:0))
-    #expect(board.cells[0][0] == .occupied(owner: .red))
-    #expect(board.cells[0][1] == .occupied(owner: .red))
-    #expect(board.cells[1][1] == .occupied(owner: .red))
+    #expect(board.cells[0][0] == Cell(owner: .red))
+    #expect(board.cells[0][1] == Cell(owner: .red))
+    #expect(board.cells[1][1] == Cell(owner: .red))
     
     // 次に反転、回転した形を配置できるか確認
     let flippedPiece = Piece(
@@ -123,7 +123,7 @@ struct BoardTests {
     // 実際に置いてみる(不可能ならエラー）
     if canPlace {
       try board.placePiece(piece: flippedPiece, at: Coordinate(x:2,y:2))
-      #expect(board.cells[2][2] == .occupied(owner: .red))
+      #expect(board.cells[2][2] == Cell(owner: .red))
     }
   }
   

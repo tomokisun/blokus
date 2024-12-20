@@ -42,7 +42,7 @@ struct ComputerHardTests {
     // 全てのセルをオーナーblueで埋めてredが置けない状態にする
     for x in 0..<Board.width {
       for y in 0..<Board.height {
-        board.cells[x][y] = .occupied(owner: .blue)
+        board.cells[x][y] = Cell(owner: .blue)
       }
     }
     
