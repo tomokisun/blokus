@@ -8,10 +8,10 @@ struct BoardView: View {
   
   var body: some View {
     Grid(horizontalSpacing: 0, verticalSpacing: 0) {
-      ForEach(0..<Board.width, id: \.self) { row in
+      ForEach(0..<Board.height, id: \.self) { column in
         GridRow {
-          ForEach(0..<Board.height, id: \.self) { column in
-            let c = Coordinate(x: column, y: row)
+          ForEach(0..<Board.width, id: \.self) { row in
+            let c = Coordinate(x: row, y: column)
             let isHighlighted = board.highlightedCoordinates.contains(c)
             let cell = board.cells[row][column]
             

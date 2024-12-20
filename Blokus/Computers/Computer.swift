@@ -12,7 +12,7 @@ protocol Computer: Actor {
   ///   - board: 現在のボード状態
   ///   - pieces: 現在使用可能なピースの配列
   /// - Returns: 選択された配置候補(`Candidate`)。配置不可能な場合は`nil`を返します。
-  func moveCandidate(board: Board, pieces: [Piece]) -> Candidate?
+  func moveCandidate(board: Board, pieces: [Piece]) async -> Candidate?
 }
 
 extension Computer {
@@ -55,13 +55,13 @@ extension Computer {
       let uniqueOrientations = generateUniqueOrientations(for: piece)
       
       // ユニークな姿勢について配置可能性を探る
-      for (rotationCase, flippedCase, shapeCoords) in uniqueOrientations {
+      for (rotationCase, flippedCase, _) in uniqueOrientations {
         var testPiece = piece
         testPiece.orientation = Orientation(rotation: rotationCase, flipped: flippedCase)
         
         // ボード全域探索
-        for y in 0..<Board.height {
-          for x in 0..<Board.width {
+        for x in 0..<Board.width {
+          for y in 0..<Board.height {
             let origin = Coordinate(x: x, y: y)
             if board.canPlacePiece(piece: testPiece, at: origin) {
               candidates.append(

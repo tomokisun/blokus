@@ -81,8 +81,8 @@ struct Board {
   mutating func highlightPossiblePlacements(for piece: Piece) {
     clearHighlights()
     
-    for y in 0..<Board.height {
-      for x in 0..<Board.width {
+    for x in 0..<Board.width {
+      for y in 0..<Board.height {
         let origin = Coordinate(x: x, y: y)
         if canPlacePiece(piece: piece, at: origin) {
           let finalCoords = computeFinalCoordinates(for: piece, at: origin)

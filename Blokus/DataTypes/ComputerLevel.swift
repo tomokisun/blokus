@@ -4,6 +4,7 @@ enum ComputerLevel: String, CaseIterable {
   case easy
   case normal
   case hard
+  case master
   
   func makeComputer(for owner: Player) -> Computer {
     switch self {
@@ -15,6 +16,9 @@ enum ComputerLevel: String, CaseIterable {
       
     case .hard:
       return ComputerHard(owner: owner)
+      
+    case .master:
+      return ComputerMaster(owner: owner)
     }
   }
 }
