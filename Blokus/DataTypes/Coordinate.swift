@@ -7,6 +7,42 @@ struct Coordinate: Codable, Hashable, Equatable {
 }
 
 extension Coordinate {
+  /// 現在の座標を指定した回転量だけ回転させた座標を返します。
+  ///
+  /// - Parameter rotation: 適用する回転量
+  /// - Returns: 回転後の座標
+  func rotated(_ rotation: Rotation) -> Coordinate {
+    switch rotation {
+    case .none:
+      return self
+    case .ninety:
+      // (x, y) -> (y, -x)
+      return Coordinate(x: y, y: -x)
+    case .oneEighty:
+      // (x, y) -> (-x, -y)
+      return Coordinate(x: -x, y: -y)
+    case .twoSeventy:
+      // (x, y) -> (-y, x)
+      return Coordinate(x: -y, y: x)
+    }
+  }
+
+  /// 現在の座標を左右反転させた座標を返します。
+  ///
+  /// - Returns: 左右反転後の座標
+  func flippedHorizontally() -> Coordinate {
+    Coordinate(x: -x, y: y)
+  }
+
+  /// 現在の座標に指定した向きを適用した座標を返します。
+  ///
+  /// - Parameter orientation: 適用する向き情報
+  /// - Returns: 回転と反転を適用した座標
+  func applying(orientation: Orientation) -> Coordinate {
+    let rotatedCoordinate = rotated(orientation.rotation)
+    return orientation.flipped ? rotatedCoordinate.flippedHorizontally() : rotatedCoordinate
+  }
+
   /// 斜め方向の近傍セルを取得します。
   ///
   /// - Parameter coord: 基準となる座標
