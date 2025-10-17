@@ -29,7 +29,7 @@ import SwiftUI
   /// 現在ターンのプレイヤーの色を示します。
   var player = Player.red
   
-  let trunRecorder = TrunRecorder()
+  let turnRecorder = TurnRecorder()
   
   /// 現在選択されているコマ。`nil`の場合は未選択です。
   var pieceSelection: Piece?
@@ -123,7 +123,7 @@ import SwiftUI
         }
       } completion: {
         Task(priority: .userInitiated) {
-          await self.trunRecorder.recordPlaceAction(piece: piece, at: origin)
+          await self.turnRecorder.recordPlaceAction(piece: piece, at: origin)
           await self.moveComputerPlayers()
         }
       }
@@ -134,7 +134,7 @@ import SwiftUI
   
   func passButtonTapped() {
     Task(priority: .userInitiated) {
-      await trunRecorder.recordPassAction(owner: player)
+      await turnRecorder.recordPassAction(owner: player)
       await moveComputerPlayers()
     }
   }
@@ -164,7 +164,7 @@ import SwiftUI
   private func moveComputerPlayer(_ computer: Computer) async throws(PlacementError) {
     if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
-      await trunRecorder.recordPlaceAction(piece: candidate.piece, at: candidate.origin)
+      await turnRecorder.recordPlaceAction(piece: candidate.piece, at: candidate.origin)
       
       withAnimation(.default) {
         if let index = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
@@ -172,7 +172,7 @@ import SwiftUI
         }
       }
     } else {
-      await trunRecorder.recordPassAction(owner: computer.owner)
+      await turnRecorder.recordPassAction(owner: computer.owner)
     }
   }
 }
