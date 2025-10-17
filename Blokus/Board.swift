@@ -49,9 +49,8 @@ struct Board {
   ///   - origin: ピースを配置する起点座標
   /// - Throws: `PlacementError` のいずれか（範囲外、セル占有済み、初回配置違反、角接触違反など）
   mutating func placePiece(piece: Piece, at origin: Coordinate) throws(PlacementError) {
-    let finalCoords = computeFinalCoordinates(for: piece, at: origin)
-    try validatePlacement(piece: piece, finalCoords: finalCoords)
-    
+    let finalCoords = try makeValidatedCoordinates(for: piece, at: origin)
+
     // 配置確定
     for bc in finalCoords {
       cells[bc.x][bc.y] = Cell(owner: piece.owner)
@@ -65,9 +64,8 @@ struct Board {
   ///   - origin: 起点座標
   /// - Returns: 配置可能なら `true`、不可能なら `false`
   func canPlacePiece(piece: Piece, at origin: Coordinate) -> Bool {
-    let finalCoords = computeFinalCoordinates(for: piece, at: origin)
     do {
-      try validatePlacement(piece: piece, finalCoords: finalCoords)
+      _ = try makeValidatedCoordinates(for: piece, at: origin)
       return true
     } catch {
       return false
@@ -84,8 +82,7 @@ struct Board {
     for x in 0..<Board.width {
       for y in 0..<Board.height {
         let origin = Coordinate(x: x, y: y)
-        if canPlacePiece(piece: piece, at: origin) {
-          let finalCoords = computeFinalCoordinates(for: piece, at: origin)
+        if let finalCoords = try? makeValidatedCoordinates(for: piece, at: origin) {
           highlightedCoordinates.formUnion(finalCoords)
         }
       }
@@ -125,6 +122,19 @@ struct Board {
     } else {
       try checkSubsequentPlacement(piece: piece, finalCoords: finalCoords)
     }
+  }
+
+  /// 指定したピースが与えられた座標に配置可能か検証し、配置後の座標リストを返します。
+  ///
+  /// - Parameters:
+  ///   - piece: 配置対象のピース
+  ///   - origin: ピースの起点となる座標
+  /// - Returns: バリデーションに合格した場合の最終的なセル座標
+  /// - Throws: バリデーションに失敗した場合は `PlacementError`
+  private func makeValidatedCoordinates(for piece: Piece, at origin: Coordinate) throws(PlacementError) -> [Coordinate] {
+    let finalCoords = computeFinalCoordinates(for: piece, at: origin)
+    try validatePlacement(piece: piece, finalCoords: finalCoords)
+    return finalCoords
   }
   
   /// 基本的な配置チェック：ボード外・セル占有の有無を確認します。
