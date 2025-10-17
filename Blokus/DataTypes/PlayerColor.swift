@@ -1,7 +1,7 @@
 import SwiftUI
 
 // プレイヤーの色
-enum Player: String, Codable, Equatable, CaseIterable {
+enum Player: String, Codable, Equatable, CaseIterable, Hashable {
   case red = "Red"
   case blue = "Blue"
   case green = "Green"

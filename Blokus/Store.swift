@@ -25,9 +25,15 @@ import SwiftUI
   
   /// コンピュータプレイヤーのインスタンスを保持する配列です。
   var computerPlayers: [Computer]
-  
+
+  /// ターンの進行を管理します。
+  private var turnManager = TurnManager()
+
   /// 現在ターンのプレイヤーの色を示します。
-  var player = Player.red
+  private(set) var player = Player.red
+
+  /// ゲームが終了したかどうかを示します。
+  private(set) var isGameOver = false
   
   let trunRecorder = TrunRecorder()
   
@@ -39,7 +45,8 @@ import SwiftUI
   
   /// 現在ターンのプレイヤーが所有するコマの配列を取得します。
   var playerPieces: [Piece] {
-    pieces.filter { $0.owner == player }
+    guard !isGameOver else { return [] }
+    return pieces.filter { $0.owner == player }
   }
   
   // MARK: - Initializer
@@ -96,7 +103,7 @@ import SwiftUI
   /// 選択コマが無い場合はハイライトをクリアします。
   func updateBoardHighlights() {
     guard isHighlight else { return }
-    if let piece = pieceSelection {
+    if let piece = pieceSelection, piece.owner == player {
       board.highlightPossiblePlacements(for: piece)
     } else {
       board.clearHighlights()
@@ -111,10 +118,12 @@ import SwiftUI
   /// - Note: 配置後は該当のコマを `pieces` から削除し、ハイライトを更新します。
   ///         配置が完了するとコンピュータプレイヤーの手番処理へ移行します。
   func cellButtonTapped(at origin: Coordinate) {
-    guard let piece = pieceSelection else { return }
+    guard !isGameOver else { return }
+    guard let piece = pieceSelection, piece.owner == player else { return }
+    let currentPlayer = player
     do {
       try board.placePiece(piece: piece, at: origin)
-      
+
       withAnimation {
         pieceSelection = nil
         updateBoardHighlights()
@@ -124,55 +133,96 @@ import SwiftUI
       } completion: {
         Task(priority: .userInitiated) {
           await self.trunRecorder.recordPlaceAction(piece: piece, at: origin)
-          await self.moveComputerPlayers()
+          let hasRemainingPieces = self.pieces.contains { $0.owner == currentPlayer }
+          await self.finishTurn(with: .placed(player: currentPlayer, hasRemainingPieces: hasRemainingPieces))
         }
       }
     } catch {
       print(error)
     }
   }
-  
+
   func passButtonTapped() {
+    guard !isGameOver else { return }
+    let currentPlayer = player
     Task(priority: .userInitiated) {
-      await trunRecorder.recordPassAction(owner: player)
-      await moveComputerPlayers()
+      await trunRecorder.recordPassAction(owner: currentPlayer)
+      await finishTurn(with: .passed(player: currentPlayer))
     }
   }
-  
-  /// 全てのコンピュータプレイヤーが思考・配置する工程を順番に実行します。
-  private func moveComputerPlayers() async {
+
+  // MARK: - Turn Management
+
+  private func finishTurn(with outcome: TurnOutcome) async {
+    turnManager.advance(after: outcome)
+    updateCurrentPlayerState()
+    await continueAutomatedTurns()
+  }
+
+  private func continueAutomatedTurns() async {
     guard computerMode else { return }
-    for player in computerPlayers {
+
+    while let current = turnManager.currentPlayer,
+          let computer = await computer(for: current) {
+      pieceSelection = nil
+      player = current
+      updateBoardHighlights()
+
       do {
-        let owner = await player.owner
-        thinkingState = .thinking(owner)
-        try await moveComputerPlayer(player)
+        thinkingState = .thinking(current)
+        let outcome = try await performComputerTurn(computer)
         thinkingState = .idle
+        turnManager.advance(after: outcome)
+        updateCurrentPlayerState()
       } catch {
-        print(error)
         thinkingState = .idle
+        print(error)
+        break
       }
     }
   }
-  
-  // MARK: - Computer Actions
-  
-  /// 特定のコンピュータプレイヤーが最適手(`candidate`)を計算し、取得した場合はそのコマを配置します。
-  ///
-  /// - Parameter computer: 思考・手番を実行するコンピュータプレイヤー。
-  /// - Throws: 配置できない場合などエラーが発生する可能性があります。
-  private func moveComputerPlayer(_ computer: Computer) async throws(PlacementError) {
+
+  private func performComputerTurn(_ computer: Computer) async throws(PlacementError) -> TurnOutcome {
     if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       await trunRecorder.recordPlaceAction(piece: candidate.piece, at: candidate.origin)
-      
+
       withAnimation(.default) {
         if let index = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
           pieces.remove(at: index)
         }
       }
+
+      let hasRemainingPieces = pieces.contains { $0.owner == candidate.piece.owner }
+      return .placed(player: candidate.piece.owner, hasRemainingPieces: hasRemainingPieces)
     } else {
-      await trunRecorder.recordPassAction(owner: computer.owner)
+      let owner = await computer.owner
+      await trunRecorder.recordPassAction(owner: owner)
+      return .passed(player: owner)
+    }
+  }
+
+  private func computer(for owner: Player) async -> Computer? {
+    for computer in computerPlayers {
+      if await computer.owner == owner {
+        return computer
+      }
+    }
+    return nil
+  }
+
+  private func updateCurrentPlayerState() {
+    if let next = turnManager.currentPlayer {
+      if player != next {
+        player = next
+      }
+      pieceSelection = nil
+      isGameOver = false
+      updateBoardHighlights()
+    } else {
+      isGameOver = true
+      pieceSelection = nil
+      board.clearHighlights()
     }
   }
 }

@@ -22,19 +22,35 @@ struct GameView: View {
       }
       
       VStack(spacing: 12) {
-        Picker(selection: $store.player) {
-          ForEach(Player.allCases, id: \.color) { playerColor in
-            let point = store.board.score(for: playerColor)
-            let text = "\(playerColor.rawValue): \(point)pt"
-            Text(text)
-              .tag(playerColor)
+        VStack(alignment: .leading, spacing: 8) {
+          if store.isGameOver {
+            Text("Game Over")
+              .font(.headline)
+          } else {
+            Text("Current Player: \(store.player.rawValue)")
+              .font(.headline)
           }
-        } label: {
-          Text("label")
+
+          HStack(spacing: 12) {
+            ForEach(Player.allCases, id: \.rawValue) { playerColor in
+              let point = store.board.score(for: playerColor)
+              let text = "\(playerColor.rawValue): \(point)pt"
+              Text(text)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(
+                  Capsule()
+                    .fill(
+                      store.isGameOver
+                        ? Color.clear
+                        : (playerColor == store.player ? playerColor.color.opacity(0.2) : Color.clear)
+                    )
+                )
+            }
+          }
         }
-        .pickerStyle(.segmented)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
-        .disabled(store.computerMode)
         
         HStack(spacing: 40) {
           Button {
@@ -86,6 +102,7 @@ struct GameView: View {
             .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 20)
+        .disabled(store.isGameOver)
       }
       .sensoryFeedback(.impact, trigger: store.pieceSelection)
       .sensoryFeedback(.impact, trigger: store.pieces)
