@@ -5,45 +5,53 @@ import SwiftUI
 /// プレイヤーやコマ(`Piece`)、ボード(`Board`)の状況を保持し、
 /// ユーザーやコンピュータプレイヤーのアクションに応じて更新します。
 @MainActor @Observable final class Store: AnyObject {
-  
+
   // MARK: - Properties
-  
+
   /// ハイライト表示の有無を制御します。`true`の場合、配置可能箇所などをハイライトします。
   let isHighlight: Bool
-  
-  /// コンピュータ対戦モードの有無を示します。`true`の場合、コンピュータプレイヤーがゲームに参加します。
-  let computerMode: Bool
-  
-  /// コンピュータプレイヤーの思考レベルを指定します。
-  let computerLevel: ComputerLevel
-  
-  /// ボードの状態を保持するモデルです。
-  var board = Board()
-  
-  /// ゲーム内で利用可能な全てのコマの配列です。
-  var pieces = Piece.allPieces
-  
-  /// コンピュータプレイヤーのインスタンスを保持する配列です。
-  var computerPlayers: [Computer]
-  
-  /// 現在ターンのプレイヤーの色を示します。
-  var player = Player.red
-  
-  let trunRecorder = TrunRecorder()
-  
+
+  /// ゲームセッションを管理するモデルです。
+  let game: GameSession
+
   /// 現在選択されているコマ。`nil`の場合は未選択です。
   var pieceSelection: Piece?
-  
-  /// コンピュータプレイヤーが思考中かどうか、もしくは誰が思考中かを示します。
-  var thinkingState = ComputerThinkingState.idle
-  
+
+  // MARK: - Convenience Accessors
+
+  var computerMode: Bool { game.computerMode }
+
+  var computerLevel: ComputerLevel { game.computerLevel }
+
+  var board: Board {
+    get { game.board }
+    set { game.board = newValue }
+  }
+
+  var pieces: [Piece] {
+    get { game.pieces }
+    set { game.pieces = newValue }
+  }
+
+  var player: Player {
+    get { game.player }
+    set { game.player = newValue }
+  }
+
+  var trunRecorder: TrunRecorder { game.trunRecorder }
+
+  var thinkingState: ComputerThinkingState {
+    get { game.thinkingState }
+    set { game.thinkingState = newValue }
+  }
+
   /// 現在ターンのプレイヤーが所有するコマの配列を取得します。
   var playerPieces: [Piece] {
-    pieces.filter { $0.owner == player }
+    game.playerPieces
   }
-  
+
   // MARK: - Initializer
-  
+
   /// `Store` の初期化を行います。
   ///
   /// - Parameters:
@@ -56,39 +64,24 @@ import SwiftUI
     computerLevel: ComputerLevel
   ) {
     self.isHighlight = isHighlight
-    self.computerMode = computerMode
-    self.computerLevel = computerLevel
-
-    self.computerPlayers = [
-      computerLevel.makeComputer(for: .blue),
-      computerLevel.makeComputer(for: .green),
-      computerLevel.makeComputer(for: .yellow)
-    ]
+    self.game = GameSession(computerMode: computerMode, computerLevel: computerLevel)
   }
-  
+
   // MARK: - Piece Operations
-  
+
   /// 選択中の全てのコマを90度回転します。
   /// 回転は `piece.orientation` を更新することで実現します。
   func rotatePiece() {
     withAnimation(.default) {
-      pieces = pieces.map {
-        var piece = $0
-        piece.orientation.rotate90()
-        return piece
-      }
+      game.rotatePieces()
     }
   }
-  
+
   /// 選択中の全てのコマを反転します(上下反転)。
   /// 反転は `piece.orientation.flip()` を利用して行われます。
   func flipPiece() {
     withAnimation(.default) {
-      pieces = pieces.map {
-        var piece = $0
-        piece.orientation.flip()
-        return piece
-      }
+      game.flipPieces()
     }
   }
 
@@ -96,15 +89,11 @@ import SwiftUI
   /// 選択コマが無い場合はハイライトをクリアします。
   func updateBoardHighlights() {
     guard isHighlight else { return }
-    if let piece = pieceSelection {
-      board.highlightPossiblePlacements(for: piece)
-    } else {
-      board.clearHighlights()
-    }
+    game.updateHighlights(for: pieceSelection)
   }
-  
+
   // MARK: - Player Actions
-  
+
   /// プレイヤーが選択中のコマを指定した座標(`origin`)へ配置します。
   ///
   /// - Parameter origin: コマを配置するボード上の座標。
@@ -113,67 +102,23 @@ import SwiftUI
   func cellButtonTapped(at origin: Coordinate) {
     guard let piece = pieceSelection else { return }
     do {
-      try board.placePiece(piece: piece, at: origin)
-      
-      withAnimation {
+      try withAnimation(.default) {
+        try game.placeHumanPiece(piece, at: origin)
         pieceSelection = nil
         updateBoardHighlights()
-        if let index = pieces.firstIndex(where: { $0.id == piece.id }) {
-          pieces.remove(at: index)
-        }
       } completion: {
         Task(priority: .userInitiated) {
-          await self.trunRecorder.recordPlaceAction(piece: piece, at: origin)
-          await self.moveComputerPlayers()
+          await self.game.finalizeHumanTurn(with: piece, at: origin)
         }
       }
     } catch {
       print(error)
     }
   }
-  
+
   func passButtonTapped() {
     Task(priority: .userInitiated) {
-      await trunRecorder.recordPassAction(owner: player)
-      await moveComputerPlayers()
-    }
-  }
-  
-  /// 全てのコンピュータプレイヤーが思考・配置する工程を順番に実行します。
-  private func moveComputerPlayers() async {
-    guard computerMode else { return }
-    for player in computerPlayers {
-      do {
-        let owner = await player.owner
-        thinkingState = .thinking(owner)
-        try await moveComputerPlayer(player)
-        thinkingState = .idle
-      } catch {
-        print(error)
-        thinkingState = .idle
-      }
-    }
-  }
-  
-  // MARK: - Computer Actions
-  
-  /// 特定のコンピュータプレイヤーが最適手(`candidate`)を計算し、取得した場合はそのコマを配置します。
-  ///
-  /// - Parameter computer: 思考・手番を実行するコンピュータプレイヤー。
-  /// - Throws: 配置できない場合などエラーが発生する可能性があります。
-  private func moveComputerPlayer(_ computer: Computer) async throws(PlacementError) {
-    if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
-      try board.placePiece(piece: candidate.piece, at: candidate.origin)
-      await trunRecorder.recordPlaceAction(piece: candidate.piece, at: candidate.origin)
-      
-      withAnimation(.default) {
-        if let index = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
-          pieces.remove(at: index)
-        }
-      }
-    } else {
-      await trunRecorder.recordPassAction(owner: computer.owner)
+      await game.recordPass(for: player)
     }
   }
 }
-
