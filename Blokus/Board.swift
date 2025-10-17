@@ -12,13 +12,22 @@ struct Board {
   static let height = 20
   
   /// ボード上のセルを管理する2次元配列。`Cell`型で状況を表します。
-  var cells: [[Cell]] = Array(
+  private(set) var cells: [[Cell]] = Array(
     repeating: Array(repeating: Cell(owner: nil), count: Board.width),
     count: Board.height
   )
-  
+
   /// 配置可能な領域をハイライト表示するための座標集合
   var highlightedCoordinates: Set<Coordinate> = []
+
+  /// 各プレイヤーが占有しているセル座標のキャッシュ
+  private var playerCellSets: [Player: Set<Coordinate>] = {
+    var cache: [Player: Set<Coordinate>] = [:]
+    for player in Player.allCases {
+      cache[player] = []
+    }
+    return cache
+  }()
   
   // MARK: - Public Methods
   
@@ -29,8 +38,15 @@ struct Board {
   /// - Parameter player: スコアを取得したいプレイヤー色
   /// - Returns: 該当プレイヤーのセル数（スコア）
   func score(for player: Player) -> Int {
-    let playerCells = getPlayerCells(owner: player)
-    return playerCells.count
+    return playerCellSet(for: player).count
+  }
+
+  /// 指定したプレイヤーが占有するセルの集合を返します。
+  ///
+  /// - Parameter owner: プレイヤー色
+  /// - Returns: 占有セル座標のセット
+  func playerCellSet(for owner: Player) -> Set<Coordinate> {
+    return playerCellSets[owner] ?? []
   }
   
   /// 指定した座標がボード上有効範囲内かを判定します。
@@ -51,10 +67,32 @@ struct Board {
   mutating func placePiece(piece: Piece, at origin: Coordinate) throws(PlacementError) {
     let finalCoords = computeFinalCoordinates(for: piece, at: origin)
     try validatePlacement(piece: piece, finalCoords: finalCoords)
-    
+
     // 配置確定
     for bc in finalCoords {
-      cells[bc.x][bc.y] = Cell(owner: piece.owner)
+      setCell(owner: piece.owner, at: bc)
+    }
+  }
+
+  /// 指定したセルの所有者を直接設定します。
+  ///
+  /// - Parameters:
+  ///   - owner: 設定するプレイヤー。`nil`の場合は空セルになります。
+  ///   - coordinate: 更新するセル座標
+  mutating func setCell(owner: Player?, at coordinate: Coordinate) {
+    guard isValidCoordinate(coordinate) else { return }
+
+    let previousOwner = cells[coordinate.x][coordinate.y].owner
+    if previousOwner == owner { return }
+
+    if let previousOwner {
+      playerCellSets[previousOwner]?.remove(coordinate)
+    }
+
+    cells[coordinate.x][coordinate.y] = Cell(owner: owner)
+
+    if let owner {
+      playerCellSets[owner, default: []].insert(coordinate)
     }
   }
   
@@ -164,7 +202,7 @@ struct Board {
   ///   - `PlacementError.mustTouchOwnPieceByCorner` （角接触なしの場合）
   ///   - `PlacementError.cannotShareEdgeWithOwnPiece` （辺で接触している場合）
   private func checkSubsequentPlacement(piece: Piece, finalCoords: [Coordinate]) throws(PlacementError) {
-    let playerCells = getPlayerCells(owner: piece.owner)
+    let playerCells = playerCellSet(for: piece.owner)
     
     var cornerTouch = false
     var edgeContactWithSelf = false
@@ -218,22 +256,6 @@ struct Board {
     let coordinate = Board.startingCorner(for: player)
     let cell = cells[coordinate.x][coordinate.y]
     return cell.owner == player
-  }
-  
-  /// 指定プレイヤーが占有するセルすべてを取得します。
-  ///
-  /// - Parameter owner: プレイヤー色
-  /// - Returns: 占有セル座標のセット
-  private func getPlayerCells(owner: Player) -> Set<Coordinate> {
-    var result = Set<Coordinate>()
-    for x in 0..<Board.width {
-      for y in 0..<Board.height {
-        if cells[x][y].owner == owner {
-          result.insert(Coordinate(x: x, y: y))
-        }
-      }
-    }
-    return result
   }
   
   // MARK: - Static Utilities
