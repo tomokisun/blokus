@@ -65,13 +65,7 @@ struct Board {
   ///   - origin: 起点座標
   /// - Returns: 配置可能なら `true`、不可能なら `false`
   func canPlacePiece(piece: Piece, at origin: Coordinate) -> Bool {
-    let finalCoords = computeFinalCoordinates(for: piece, at: origin)
-    do {
-      try validatePlacement(piece: piece, finalCoords: finalCoords)
-      return true
-    } catch {
-      return false
-    }
+    return validatedCoordinatesIfPossible(for: piece, at: origin) != nil
   }
   
   /// 指定したピースが配置可能な箇所をハイライトします。
@@ -80,14 +74,14 @@ struct Board {
   /// - Parameter piece: ハイライト対象のピース
   mutating func highlightPossiblePlacements(for piece: Piece) {
     clearHighlights()
-    
+
     for x in 0..<Board.width {
       for y in 0..<Board.height {
         let origin = Coordinate(x: x, y: y)
-        if canPlacePiece(piece: piece, at: origin) {
-          let finalCoords = computeFinalCoordinates(for: piece, at: origin)
-          highlightedCoordinates.formUnion(finalCoords)
+        guard let finalCoords = validatedCoordinatesIfPossible(for: piece, at: origin) else {
+          continue
         }
+        highlightedCoordinates.formUnion(finalCoords)
       }
     }
   }
@@ -108,6 +102,22 @@ struct Board {
   private func computeFinalCoordinates(for piece: Piece, at origin: Coordinate) -> [Coordinate] {
     let shape = piece.transformedShape()
     return shape.map { Coordinate(x: origin.x + $0.x, y: origin.y + $0.y) }
+  }
+
+  /// 配置可能な場合に限り最終的な座標リストを返す補助メソッド。
+  ///
+  /// - Parameters:
+  ///   - piece: 配置対象のピース
+  ///   - origin: 起点座標
+  /// - Returns: 配置が可能であれば占有する全セル座標、不可の場合は `nil`
+  private func validatedCoordinatesIfPossible(for piece: Piece, at origin: Coordinate) -> [Coordinate]? {
+    let finalCoords = computeFinalCoordinates(for: piece, at: origin)
+    do {
+      try validatePlacement(piece: piece, finalCoords: finalCoords)
+      return finalCoords
+    } catch {
+      return nil
+    }
   }
   
   /// ピース配置時のバリデーションを行います。
