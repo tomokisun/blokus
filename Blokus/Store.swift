@@ -25,9 +25,11 @@ import SwiftUI
   
   /// コンピュータプレイヤーのインスタンスを保持する配列です。
   var computerPlayers: [Computer]
-  
+
+  private let turnOrder = Player.allCases
+
   /// 現在ターンのプレイヤーの色を示します。
-  var player = Player.red
+  private(set) var player = Player.red
   
   let turnRecorder = TurnRecorder()
   
@@ -124,7 +126,7 @@ import SwiftUI
     guard let piece = pieceSelection else { return }
     do {
       try board.placePiece(piece: piece, at: origin)
-      
+
       withAnimation {
         pieceSelection = nil
         updateBoardHighlights()
@@ -134,56 +136,90 @@ import SwiftUI
       } completion: {
         Task(priority: .userInitiated) {
           await self.turnRecorder.recordPlaceAction(piece: piece, at: origin)
-          await self.moveComputerPlayers()
+          await self.advanceTurn()
         }
       }
     } catch {
       print(error)
     }
   }
-  
+
   func passButtonTapped() {
+    let passingPlayer = player
     Task(priority: .userInitiated) {
-      await turnRecorder.recordPassAction(owner: player)
-      await moveComputerPlayers()
+      await turnRecorder.recordPassAction(owner: passingPlayer)
+      await self.advanceTurn()
     }
   }
-  
-  /// 全てのコンピュータプレイヤーが思考・配置する工程を順番に実行します。
-  private func moveComputerPlayers() async {
-    guard computerMode else { return }
-    for player in computerPlayers {
-      do {
-        let owner = await player.owner
-        thinkingState = .thinking(owner)
-        try await moveComputerPlayer(player)
+
+  /// 現在の手番を次のプレイヤーへ進めます。
+  /// コンピュータモードの場合は、次のプレイヤーがコンピュータである限り連続して処理を行います。
+  func advanceTurn() async {
+    var currentPlayer = player
+
+    while true {
+      let nextPlayer = nextPlayer(after: currentPlayer)
+      updateCurrentPlayer(to: nextPlayer)
+
+      guard computerMode, let computer = await computerPlayer(for: nextPlayer) else {
         thinkingState = .idle
+        return
+      }
+
+      do {
+        thinkingState = .thinking(nextPlayer)
+        try await moveComputerPlayer(computer, owner: nextPlayer)
       } catch {
         print(error)
-        thinkingState = .idle
       }
+
+      thinkingState = .idle
+      currentPlayer = nextPlayer
     }
   }
-  
+
   // MARK: - Computer Actions
-  
+
   /// 特定のコンピュータプレイヤーが最適手(`candidate`)を計算し、取得した場合はそのコマを配置します。
   ///
   /// - Parameter computer: 思考・手番を実行するコンピュータプレイヤー。
   /// - Throws: 配置できない場合などエラーが発生する可能性があります。
-  private func moveComputerPlayer(_ computer: Computer) async throws(PlacementError) {
+  private func moveComputerPlayer(_ computer: Computer, owner: Player) async throws(PlacementError) {
     if let candidate = await computer.moveCandidate(board: board, pieces: pieces) {
       try board.placePiece(piece: candidate.piece, at: candidate.origin)
       await turnRecorder.recordPlaceAction(piece: candidate.piece, at: candidate.origin)
-      
+
       withAnimation(.default) {
         if let index = pieces.firstIndex(where: { $0.id == candidate.piece.id }) {
           pieces.remove(at: index)
         }
       }
     } else {
-      await turnRecorder.recordPassAction(owner: computer.owner)
+      await turnRecorder.recordPassAction(owner: owner)
     }
+  }
+
+  private func nextPlayer(after player: Player) -> Player {
+    guard let index = turnOrder.firstIndex(of: player) else { return player }
+    let nextIndex = turnOrder.index(after: index)
+    return turnOrder[nextIndex == turnOrder.endIndex ? turnOrder.startIndex : nextIndex]
+  }
+
+  private func updateCurrentPlayer(to newPlayer: Player) {
+    withAnimation(.default) {
+      player = newPlayer
+      pieceSelection = nil
+    }
+    updateBoardHighlights()
+  }
+
+  private func computerPlayer(for owner: Player) async -> Computer? {
+    for computer in computerPlayers {
+      if await computer.owner == owner {
+        return computer
+      }
+    }
+    return nil
   }
 }
 
