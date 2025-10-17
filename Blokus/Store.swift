@@ -122,21 +122,27 @@ import SwiftUI
   ///         配置が完了するとコンピュータプレイヤーの手番処理へ移行します。
   func cellButtonTapped(at origin: Coordinate) {
     guard let piece = pieceSelection else { return }
+
+    Task(priority: .userInitiated) {
+      await handlePlacement(of: piece, at: origin)
+    }
+  }
+
+  @MainActor
+  private func handlePlacement(of piece: Piece, at origin: Coordinate) async {
     do {
       try board.placePiece(piece: piece, at: origin)
-      
+
       withAnimation {
         pieceSelection = nil
         updateBoardHighlights()
         if let index = pieces.firstIndex(where: { $0.id == piece.id }) {
           pieces.remove(at: index)
         }
-      } completion: {
-        Task(priority: .userInitiated) {
-          await self.turnRecorder.recordPlaceAction(piece: piece, at: origin)
-          await self.moveComputerPlayers()
-        }
       }
+
+      await turnRecorder.recordPlaceAction(piece: piece, at: origin)
+      await moveComputerPlayers()
     } catch {
       print(error)
     }
