@@ -12,6 +12,10 @@ struct Board {
   static let height = 20
   
   /// ボード上のセルを管理する2次元配列。`Cell`型で状況を表します。
+  ///
+  /// > Note: `cells[x][y]` のように "列 → 行" の順（列優先）でアクセスします。
+  /// 通常の Swift 配列では `cells[row][column]` と書くことが多いため、
+  /// インデックスの並びを明確にする目的で列優先であることを明記しています。
   var cells: [[Cell]] = Array(
     repeating: Array(repeating: Cell(owner: nil), count: Board.width),
     count: Board.height
@@ -51,10 +55,10 @@ struct Board {
   mutating func placePiece(piece: Piece, at origin: Coordinate) throws(PlacementError) {
     let finalCoords = computeFinalCoordinates(for: piece, at: origin)
     try validatePlacement(piece: piece, finalCoords: finalCoords)
-    
+
     // 配置確定
     for bc in finalCoords {
-      cells[bc.x][bc.y] = Cell(owner: piece.owner)
+      setCell(Cell(owner: piece.owner), column: bc.x, row: bc.y)
     }
   }
   
@@ -136,10 +140,30 @@ struct Board {
       guard isValidCoordinate(bc) else {
         throw PlacementError.outOfBounds
       }
-      if cells[bc.x][bc.y].owner != nil {
+      if cell(column: bc.x, row: bc.y).owner != nil {
         throw PlacementError.cellOccupied
       }
     }
+  }
+
+  /// 指定した列・行のセルを取得します。
+  ///
+  /// - Parameters:
+  ///   - x: 列インデックス（0 が左端）
+  ///   - y: 行インデックス（0 が上端）
+  /// - Returns: 対応するセル
+  func cell(column x: Int, row y: Int) -> Cell {
+    cells[x][y]
+  }
+
+  /// 指定した列・行のセルを更新します。
+  ///
+  /// - Parameters:
+  ///   - newValue: 設定するセル
+  ///   - x: 列インデックス（0 が左端）
+  ///   - y: 行インデックス（0 が上端）
+  mutating func setCell(_ newValue: Cell, column x: Int, row y: Int) {
+    cells[x][y] = newValue
   }
   
   /// 初回配置におけるチェック：プレイヤーの開始コーナーを含んでいるか確認します。
