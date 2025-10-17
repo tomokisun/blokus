@@ -17,8 +17,8 @@ struct Board {
   /// 通常の Swift 配列では `cells[row][column]` と書くことが多いため、
   /// インデックスの並びを明確にする目的で列優先であることを明記しています。
   var cells: [[Cell]] = Array(
-    repeating: Array(repeating: Cell(owner: nil), count: Board.width),
-    count: Board.height
+    repeating: Array(repeating: Cell(owner: nil), count: Board.height),
+    count: Board.width
   )
   
   /// 配置可能な領域をハイライト表示するための座標集合

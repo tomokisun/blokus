@@ -109,7 +109,7 @@ struct ComputerNormalTests {
     // 全セルをfake占有
     for x in 0..<Board.width {
       for y in 0..<Board.height {
-        board.cells[y][x] = Cell(owner: .blue)
+        board.cells[x][y] = Cell(owner: .blue)
       }
     }
     
