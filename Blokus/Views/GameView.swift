@@ -22,7 +22,12 @@ struct GameView: View {
       }
       
       VStack(spacing: 12) {
-        Picker(selection: $store.player) {
+        Picker(
+          selection: Binding(
+            get: { store.player },
+            set: { _ in }
+          )
+        ) {
           ForEach(Player.allCases, id: \.color) { playerColor in
             let point = store.board.score(for: playerColor)
             let text = "\(playerColor.rawValue): \(point)pt"
@@ -34,7 +39,7 @@ struct GameView: View {
         }
         .pickerStyle(.segmented)
         .padding(.horizontal, 20)
-        .disabled(store.computerMode)
+        .allowsHitTesting(false)
         
         HStack(spacing: 40) {
           Button {
