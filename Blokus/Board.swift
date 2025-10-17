@@ -80,15 +80,13 @@ struct Board {
   /// - Parameter piece: ハイライト対象のピース
   mutating func highlightPossiblePlacements(for piece: Piece) {
     clearHighlights()
-    
-    for x in 0..<Board.width {
-      for y in 0..<Board.height {
-        let origin = Coordinate(x: x, y: y)
-        if canPlacePiece(piece: piece, at: origin) {
-          let finalCoords = computeFinalCoordinates(for: piece, at: origin)
-          highlightedCoordinates.formUnion(finalCoords)
-        }
+
+    for origin in Board.boardCoordinates {
+      guard canPlacePiece(piece: piece, at: origin) else {
+        continue
       }
+      let finalCoords = computeFinalCoordinates(for: piece, at: origin)
+      highlightedCoordinates.formUnion(finalCoords)
     }
   }
   
@@ -166,22 +164,19 @@ struct Board {
   private func checkSubsequentPlacement(piece: Piece, finalCoords: [Coordinate]) throws(PlacementError) {
     let playerCells = getPlayerCells(owner: piece.owner)
     
-    var cornerTouch = false
-    var edgeContactWithSelf = false
-    
-    for fc in finalCoords {
-      if checkCornerTouch(fc: fc, playerCells: playerCells) {
-        cornerTouch = true
-      }
-      if checkEdgeContact(fc: fc, playerCells: playerCells) {
-        edgeContactWithSelf = true
-      }
+    let touchesCorner = finalCoords.contains { coordinate in
+      checkCornerTouch(fc: coordinate, playerCells: playerCells)
     }
-    
-    if !cornerTouch {
+
+    if !touchesCorner {
       throw PlacementError.mustTouchOwnPieceByCorner
     }
-    if edgeContactWithSelf {
+
+    let touchesEdge = finalCoords.contains { coordinate in
+      checkEdgeContact(fc: coordinate, playerCells: playerCells)
+    }
+
+    if touchesEdge {
       throw PlacementError.cannotShareEdgeWithOwnPiece
     }
   }
@@ -225,17 +220,13 @@ struct Board {
   /// - Parameter owner: プレイヤー色
   /// - Returns: 占有セル座標のセット
   private func getPlayerCells(owner: Player) -> Set<Coordinate> {
-    var result = Set<Coordinate>()
-    for x in 0..<Board.width {
-      for y in 0..<Board.height {
-        if cells[x][y].owner == owner {
-          result.insert(Coordinate(x: x, y: y))
-        }
+    return Board.boardCoordinates.reduce(into: Set<Coordinate>()) { result, coordinate in
+      if cells[coordinate.x][coordinate.y].owner == owner {
+        result.insert(coordinate)
       }
     }
-    return result
   }
-  
+
   // MARK: - Static Utilities
   
   /// 各プレイヤーの開始コーナー座標を返します。
@@ -254,5 +245,17 @@ struct Board {
       return Coordinate(x: 0, y: Board.height - 1)
     }
   }
+
+  /// ボード上のすべての座標
+  private static let boardCoordinates: [Coordinate] = {
+    var coordinates: [Coordinate] = []
+    coordinates.reserveCapacity(Board.width * Board.height)
+    for x in 0..<Board.width {
+      for y in 0..<Board.height {
+        coordinates.append(Coordinate(x: x, y: y))
+      }
+    }
+    return coordinates
+  }()
 }
 
