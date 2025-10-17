@@ -40,9 +40,10 @@ struct GameView: View {
           Button {
             store.rotatePiece()
           } label: {
-            let flipped = store.pieces.first?.orientation.flipped ?? false
+            let flipped = store.pieceSelection?.orientation.flipped ?? false
             Label("Rotate", systemImage: flipped ? "rotate.right" : "rotate.left")
           }
+          .disabled(store.pieceSelection == nil)
           
           Button {
             isPresented = true
@@ -55,6 +56,7 @@ struct GameView: View {
           } label: {
             Label("Flip", systemImage: "trapezoid.and.line.vertical")
           }
+          .disabled(store.pieceSelection == nil)
         }
       }
       

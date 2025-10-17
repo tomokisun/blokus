@@ -68,27 +68,37 @@ import SwiftUI
   
   // MARK: - Piece Operations
   
-  /// 選択中の全てのコマを90度回転します。
+  /// 選択中のコマを90度回転します。
   /// 回転は `piece.orientation` を更新することで実現します。
   func rotatePiece() {
+    guard var selection = pieceSelection else { return }
+
     withAnimation(.default) {
-      pieces = pieces.map {
-        var piece = $0
-        piece.orientation.rotate90()
-        return piece
+      selection.orientation.rotate90()
+      pieceSelection = selection
+
+      if let index = pieces.firstIndex(where: { $0.id == selection.id }) {
+        pieces[index] = selection
       }
+
+      updateBoardHighlights()
     }
   }
-  
-  /// 選択中の全てのコマを反転します(上下反転)。
+
+  /// 選択中のコマを反転します(上下反転)。
   /// 反転は `piece.orientation.flip()` を利用して行われます。
   func flipPiece() {
+    guard var selection = pieceSelection else { return }
+
     withAnimation(.default) {
-      pieces = pieces.map {
-        var piece = $0
-        piece.orientation.flip()
-        return piece
+      selection.orientation.flip()
+      pieceSelection = selection
+
+      if let index = pieces.firstIndex(where: { $0.id == selection.id }) {
+        pieces[index] = selection
       }
+
+      updateBoardHighlights()
     }
   }
 
