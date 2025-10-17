@@ -12,29 +12,7 @@ struct Piece: Codable, Identifiable, Equatable {
 
 extension Piece {
   func transformedShape() -> [Coordinate] {
-    var transformed = baseShape
-    
-    // 回転適用
-    switch orientation.rotation {
-    case .none:
-      break
-    case .ninety:
-      // (x,y) -> (y, -x)
-      transformed = transformed.map { Coordinate(x: $0.y, y: -$0.x) }
-    case .oneEighty:
-      // (x,y) -> (-x, -y)
-      transformed = transformed.map { Coordinate(x: -$0.x, y: -$0.y) }
-    case .twoSeventy:
-      // (x,y) -> (-y, x)
-      transformed = transformed.map { Coordinate(x: -$0.y, y: $0.x) }
-    }
-    
-    // 反転適用 (水平反転とする)
-    if orientation.flipped {
-      transformed = transformed.map { Coordinate(x: -$0.x, y: $0.y) }
-    }
-    
-    return transformed
+    baseShape.map { $0.applying(orientation: orientation) }
   }
 }
 
