@@ -4,7 +4,7 @@ import ReplayKit
 @MainActor
 @Observable
 final class ReplayStore: AnyObject {
-  let truns: [Trun]
+  let turns: [Turn]
   var board = Board()
   
   var currentIndex = 0
@@ -12,37 +12,37 @@ final class ReplayStore: AnyObject {
   var speed: Double = 1.0
   
   var isPlaying: Bool {
-    currentIndex < truns.count && !isPaused
+    currentIndex < turns.count && !isPaused
   }
-  
+
   var progress: Double {
-    guard !truns.isEmpty else { return 0.0 }
-    return Double(currentIndex) / Double(truns.count)
+    guard !turns.isEmpty else { return 0.0 }
+    return Double(currentIndex) / Double(turns.count)
   }
-  
-  init(truns: [Trun]) {
-    self.truns = truns
+
+  init(turns: [Turn]) {
+    self.turns = turns
       .sorted(by: { $0.index < $1.index })
   }
   
   func start() async {
     // 既に最後まで再生している場合はリセット
-    if currentIndex >= truns.count {
+    if currentIndex >= turns.count {
       currentIndex = 0
       board = Board()
     }
-    
+
     isPaused = false
-    
+
     do {
-      while currentIndex < truns.count {
+      while currentIndex < turns.count {
         // 一時停止状態の場合は待機
         while isPaused {
           try await Task.sleep(for: .seconds(0.1))
           try Task.checkCancellation()
         }
         
-        let trun = truns[currentIndex]
+        let turn = turns[currentIndex]
         
         // スピードに応じて待つ(標準1.0倍速で1秒ごとに進む)
         // speed=2.0なら0.5秒、speed=0.5なら2秒
@@ -50,10 +50,10 @@ final class ReplayStore: AnyObject {
         try await Task.sleep(for: .seconds(interval))
         try Task.checkCancellation()
         
-        if case let .place(piece, origin) = trun.action {
+        if case let .place(piece, origin) = turn.action {
           try board.placePiece(piece: piece, at: origin)
         }
-        
+
         currentIndex += 1
       }
     } catch {
@@ -67,11 +67,11 @@ final class ReplayStore: AnyObject {
   
   func resume() {
     // 再開
-    if currentIndex < truns.count {
+    if currentIndex < turns.count {
       isPaused = false
     }
   }
-  
+
   func stop() {
     // 一旦停止
     isPaused = true
@@ -113,7 +113,7 @@ struct ReplayView: View {
             store.pause()
           } else {
             // 再生を開始するタスクを起動
-            if store.currentIndex >= store.truns.count {
+            if store.currentIndex >= store.turns.count {
               // 最初から再生
               store.currentIndex = 0
               store.board = Board()
@@ -126,14 +126,14 @@ struct ReplayView: View {
             }
           }
         }
-        
+
         Button("Stop") {
           store.stop()
           task?.cancel()
           task = nil
         }
       }
-      
+
       Picker("Speed: \(String(format:"%.1fx", store.speed))", selection: $store.speed) {
         Text("0.5x").tag(0.5)
         Text("1.0x").tag(1.0)

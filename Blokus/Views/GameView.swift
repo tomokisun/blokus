@@ -92,7 +92,7 @@ struct GameView: View {
       .sensoryFeedback(.impact, trigger: store.player)
     }
     .sheet(isPresented: $isPresented) {
-      ReplayView(store: ReplayStore(truns: store.trunRecorder.truns))
+      ReplayView(store: ReplayStore(turns: store.turnRecorder.turns))
     }
   }
 }

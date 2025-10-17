@@ -1,12 +1,12 @@
 import Foundation
 
-struct Trun: Equatable, Codable {
+struct Turn: Equatable, Codable {
   let index: Int
-  let action: TrunAction
+  let action: TurnAction
   let owner: Player
 }
 
-enum TrunAction: Equatable, Codable {
+enum TurnAction: Equatable, Codable {
   case pass
   case place(piece: Piece, at: Coordinate)
 }
