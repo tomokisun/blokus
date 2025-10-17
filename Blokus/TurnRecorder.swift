@@ -1,7 +1,7 @@
 import Foundation
 
 actor TurnRecorder {
-  var turns: [Turn] = []
+  private var turns: [Turn] = []
 
   func currentIndexOf(owner: Player) -> Int {
     turns.filter { $0.owner == owner }.count
@@ -16,5 +16,9 @@ actor TurnRecorder {
   func recordPassAction(owner: Player) {
     let index = currentIndexOf(owner: owner)
     turns.append(Turn(index: index, action: .pass, owner: owner))
+  }
+
+  func recordedTurns() -> [Turn] {
+    turns
   }
 }
