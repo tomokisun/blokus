@@ -22,7 +22,6 @@ final class ReplayStore: AnyObject {
 
   init(turns: [Turn]) {
     self.turns = turns
-      .sorted(by: { $0.index < $1.index })
   }
   
   func start() async {

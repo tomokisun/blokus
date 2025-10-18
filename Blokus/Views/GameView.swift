@@ -4,6 +4,7 @@ struct GameView: View {
   @State var store: Store
   @Environment(\.cellSize) var cellSize
   @State var isPresented = false
+  @State private var replayStore: ReplayStore?
 
   var body: some View {
     VStack(spacing: 12) {
@@ -46,7 +47,14 @@ struct GameView: View {
           .disabled(store.pieceSelection == nil)
           
           Button {
-            isPresented = true
+            let turnRecorder = store.turnRecorder
+            Task {
+              let turns = await turnRecorder.recordedTurns()
+              await MainActor.run {
+                replayStore = ReplayStore(turns: turns)
+                isPresented = true
+              }
+            }
           } label: {
             Text("Replay")
           }
@@ -93,8 +101,14 @@ struct GameView: View {
       .sensoryFeedback(.impact, trigger: store.pieces)
       .sensoryFeedback(.impact, trigger: store.player)
     }
-    .sheet(isPresented: $isPresented) {
-      ReplayView(store: ReplayStore(turns: store.turnRecorder.turns))
+    .sheet(isPresented: $isPresented, onDismiss: {
+      replayStore = nil
+    }) {
+      if let replayStore {
+        ReplayView(store: replayStore)
+      } else {
+        ProgressView()
+      }
     }
   }
 }
