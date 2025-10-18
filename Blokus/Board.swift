@@ -23,6 +23,12 @@ struct Board {
   
   /// 配置可能な領域をハイライト表示するための座標集合
   var highlightedCoordinates: Set<Coordinate> = []
+
+  /// 各プレイヤーが角接触で到達できる候補セルのキャッシュ
+  private var cornerCandidateCellsByPlayer: [Player: Set<Coordinate>] =
+    Dictionary(uniqueKeysWithValues: Player.allCases.map { player in
+      (player, Set([Board.startingCorner(for: player)]))
+    })
   
   // MARK: - Public Methods
   
@@ -60,6 +66,8 @@ struct Board {
     for bc in finalCoords {
       setCell(Cell(owner: piece.owner), column: bc.x, row: bc.y)
     }
+
+    updateCornerCandidates(afterPlacing: finalCoords, for: piece.owner)
   }
   
   /// 指定のピースを特定の座標に置けるかどうか判定します（実際には置かない）。
@@ -85,12 +93,22 @@ struct Board {
   mutating func highlightPossiblePlacements(for piece: Piece) {
     clearHighlights()
 
-    for origin in Board.boardCoordinates {
-      guard canPlacePiece(piece: piece, at: origin) else {
-        continue
+    let candidateCells = cornerCandidateCellsByPlayer[piece.owner] ?? []
+    guard !candidateCells.isEmpty else { return }
+
+    let shape = piece.transformedShape()
+    var checkedOrigins: Set<Coordinate> = []
+
+    for candidate in candidateCells {
+      for shapeCell in shape {
+        let origin = Coordinate(x: candidate.x - shapeCell.x, y: candidate.y - shapeCell.y)
+        guard !checkedOrigins.contains(origin) else { continue }
+        checkedOrigins.insert(origin)
+
+        guard canPlacePiece(piece: piece, at: origin) else { continue }
+        let finalCoords = computeFinalCoordinates(for: piece, at: origin)
+        highlightedCoordinates.formUnion(finalCoords)
       }
-      let finalCoords = computeFinalCoordinates(for: piece, at: origin)
-      highlightedCoordinates.formUnion(finalCoords)
     }
   }
   
@@ -249,6 +267,53 @@ struct Board {
         result.insert(coordinate)
       }
     }
+  }
+
+  /// 新たに配置したピースに応じて角接触候補セルのキャッシュを更新します。
+  ///
+  /// - Parameters:
+  ///   - finalCoords: ピースが実際に占有するセルの座標
+  ///   - player: ピースの所有者
+  private mutating func updateCornerCandidates(afterPlacing finalCoords: [Coordinate], for player: Player) {
+    // 辞書にすべてのプレイヤーのキーを用意
+    for owner in Player.allCases where cornerCandidateCellsByPlayer[owner] == nil {
+      cornerCandidateCellsByPlayer[owner] = Set([Board.startingCorner(for: owner)])
+    }
+
+    // 新しく埋まったセルは全プレイヤーの候補から除外
+    for coord in finalCoords {
+      for owner in Player.allCases {
+        cornerCandidateCellsByPlayer[owner]?.remove(coord)
+      }
+    }
+
+    guard var playerCandidates = cornerCandidateCellsByPlayer[player] else { return }
+
+    // 自駒と辺接触してしまうセルは候補から除外
+    for coord in finalCoords {
+      for neighbor in coord.edgeNeighbors() {
+        guard isValidCoordinate(neighbor) else { continue }
+        playerCandidates.remove(neighbor)
+      }
+    }
+
+    // 新たに角接触で到達できるセルを追加
+    for coord in finalCoords {
+      for diagonal in coord.diagonalNeighbors() {
+        guard isValidCoordinate(diagonal) else { continue }
+        if cells[diagonal.x][diagonal.y].owner != nil { continue }
+
+        let touchesOwnEdge = diagonal.edgeNeighbors().contains { neighbor in
+          isValidCoordinate(neighbor) && cells[neighbor.x][neighbor.y].owner == player
+        }
+
+        if !touchesOwnEdge {
+          playerCandidates.insert(diagonal)
+        }
+      }
+    }
+
+    cornerCandidateCellsByPlayer[player] = playerCandidates
   }
 
   // MARK: - Static Utilities
