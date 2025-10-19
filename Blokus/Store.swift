@@ -26,8 +26,14 @@ import SwiftUI
   /// コンピュータプレイヤーのインスタンスを保持する配列です。
   var computerPlayers: [Computer]
   
+  /// ゲームの手番順序。
+  private let turnOrder = Player.allCases
+
+  /// 現在の手番を示すインデックス。
+  private var currentTurnIndex = 0
+
   /// 現在ターンのプレイヤーの色を示します。
-  var player = Player.red
+  private(set) var currentPlayer: Player
   
   let turnRecorder = TurnRecorder()
   
@@ -39,7 +45,7 @@ import SwiftUI
   
   /// 現在ターンのプレイヤーが所有するコマの配列を取得します。
   var playerPieces: [Piece] {
-    pieces.filter { $0.owner == player }
+    pieces.filter { $0.owner == currentPlayer }
   }
   
   // MARK: - Initializer
@@ -59,11 +65,19 @@ import SwiftUI
     self.computerMode = computerMode
     self.computerLevel = computerLevel
 
-    self.computerPlayers = [
-      computerLevel.makeComputer(for: .blue),
-      computerLevel.makeComputer(for: .green),
-      computerLevel.makeComputer(for: .yellow)
-    ]
+    if computerMode {
+      self.computerPlayers = [
+        computerLevel.makeComputer(for: .blue),
+        computerLevel.makeComputer(for: .green),
+        computerLevel.makeComputer(for: .yellow)
+      ]
+    } else {
+      self.computerPlayers = []
+    }
+
+    self.currentPlayer = turnOrder[currentTurnIndex]
+
+    prepareForNextTurn()
   }
   
   // MARK: - Piece Operations
@@ -122,6 +136,7 @@ import SwiftUI
   ///         配置が完了するとコンピュータプレイヤーの手番処理へ移行します。
   func cellButtonTapped(at origin: Coordinate) {
     guard let piece = pieceSelection else { return }
+    guard piece.owner == currentPlayer else { return }
 
     Task(priority: .userInitiated) {
       await handlePlacement(of: piece, at: origin)
@@ -142,33 +157,69 @@ import SwiftUI
       }
 
       await turnRecorder.recordPlaceAction(piece: piece, at: origin)
-      await moveComputerPlayers()
+      await completeTurn()
     } catch {
       print(error)
     }
   }
-  
+
   func passButtonTapped() {
     Task(priority: .userInitiated) {
-      await turnRecorder.recordPassAction(owner: player)
-      await moveComputerPlayers()
+      await turnRecorder.recordPassAction(owner: currentPlayer)
+      await completeTurn()
     }
   }
-  
+
+  /// 現在の手番を次のプレイヤーへ進めます。
+  func advanceTurn() {
+    guard !turnOrder.isEmpty else { return }
+
+    currentTurnIndex = (currentTurnIndex + 1) % turnOrder.count
+    currentPlayer = turnOrder[currentTurnIndex]
+    prepareForNextTurn()
+  }
+
   /// 全てのコンピュータプレイヤーが思考・配置する工程を順番に実行します。
   private func moveComputerPlayers() async {
     guard computerMode else { return }
-    for player in computerPlayers {
+
+    while let computer = await computer(for: currentPlayer) {
       do {
-        let owner = await player.owner
-        thinkingState = .thinking(owner)
-        try await moveComputerPlayer(player)
-        thinkingState = .idle
+        thinkingState = .thinking(currentPlayer)
+        try await moveComputerPlayer(computer)
       } catch {
         print(error)
-        thinkingState = .idle
+      }
+
+      thinkingState = .idle
+      advanceTurn()
+    }
+  }
+
+  /// 現在の手番が完了した後の共通処理を行います。
+  private func completeTurn() async {
+    advanceTurn()
+    await moveComputerPlayers()
+  }
+
+  /// 手番開始時の共通状態を整えます。
+  private func prepareForNextTurn() {
+    pieceSelection = nil
+    updateBoardHighlights()
+  }
+
+  /// 現在の手番プレイヤーに対応するコンピュータを取得します。
+  private func computer(for player: Player) async -> Computer? {
+    guard computerMode else { return nil }
+
+    for computer in computerPlayers {
+      let owner = await computer.owner
+      if owner == player {
+        return computer
       }
     }
+
+    return nil
   }
   
   // MARK: - Computer Actions

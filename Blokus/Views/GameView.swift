@@ -23,7 +23,12 @@ struct GameView: View {
       }
       
       VStack(spacing: 12) {
-        Picker(selection: $store.player) {
+        let currentPlayerBinding = Binding<Player>(
+          get: { store.currentPlayer },
+          set: { _ in }
+        )
+
+        Picker(selection: currentPlayerBinding) {
           ForEach(Player.allCases, id: \.color) { playerColor in
             let point = store.board.score(for: playerColor)
             let text = "\(playerColor.rawValue): \(point)pt"
@@ -35,7 +40,7 @@ struct GameView: View {
         }
         .pickerStyle(.segmented)
         .padding(.horizontal, 20)
-        .disabled(store.computerMode)
+        .allowsHitTesting(false)
         
         HStack(spacing: 40) {
           Button {
@@ -81,7 +86,7 @@ struct GameView: View {
             } label: {
               PieceView(cellSize: cellSize, piece: piece)
                 .padding()
-                .background(piece == store.pieceSelection ? store.player.color.opacity(0.2) : Color.clear)
+                .background(piece == store.pieceSelection ? store.currentPlayer.color.opacity(0.2) : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
           }
@@ -99,7 +104,7 @@ struct GameView: View {
       }
       .sensoryFeedback(.impact, trigger: store.pieceSelection)
       .sensoryFeedback(.impact, trigger: store.pieces)
-      .sensoryFeedback(.impact, trigger: store.player)
+      .sensoryFeedback(.impact, trigger: store.currentPlayer)
     }
     .sheet(isPresented: $isPresented, onDismiss: {
       replayStore = nil
