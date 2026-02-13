@@ -17,4 +17,8 @@ actor TrunRecorder {
     let index = currentIndexOf(owner: owner)
     truns.append(Trun(index: index, action: .pass, owner: owner))
   }
+  
+  func snapshotTruns() -> [Trun] {
+    truns
+  }
 }

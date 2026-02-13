@@ -2,19 +2,18 @@ import Foundation
 
 enum ComputerLevel: String, CaseIterable {
   case easy
-  case normal
-  case hard
-  
+
+  var localizedName: String {
+    switch self {
+    case .easy:
+      return String(localized: "Easy")
+    }
+  }
+
   func makeComputer(for owner: Player) -> Computer {
     switch self {
     case .easy:
       return ComputerEasy(owner: owner)
-      
-    case .normal:
-      return ComputerNormal(owner: owner)
-      
-    case .hard:
-      return ComputerHard(owner: owner)
     }
   }
 }

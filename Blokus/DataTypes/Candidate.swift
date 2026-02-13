@@ -1,9 +1,9 @@
 import Foundation
 
-/// `Candidate` は、最終的に選択されたコマとその配置座標を表します。
+/// Represents the final chosen piece and its placement coordinate.
 struct Candidate: Codable {
-  /// 配置するピース。
+  /// Piece that will be placed.
   let piece: Piece
-  /// ピースを配置する座標。
+  /// Origin coordinate where the piece is placed.
   let origin: Coordinate
 }

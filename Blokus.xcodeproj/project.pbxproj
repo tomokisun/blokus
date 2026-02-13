@@ -6,18 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXContainerItemProxy section */
-		B705AD6D2D12B44600DCB6EE /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = B71C824D2D113CFB006275BE /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = B71C82542D113CFB006275BE;
-			remoteInfo = Blokus;
-		};
-/* End PBXContainerItemProxy section */
+/* Begin PBXBuildFile section */
+		B75A129B2F3EB5D30008067D /* Dependencies in Frameworks */ = {isa = PBXBuildFile; productRef = B75A129A2F3EB5D30008067D /* Dependencies */; };
+		B75A129D2F3EB5D30008067D /* DependenciesMacros in Frameworks */ = {isa = PBXBuildFile; productRef = B75A129C2F3EB5D30008067D /* DependenciesMacros */; };
+		B75A12A22F3EB5E10008067D /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = B75A12A12F3EB5E10008067D /* ComposableArchitecture */; };
+		B75A12C12F3EC0BE0008067D /* Sharing in Frameworks */ = {isa = PBXBuildFile; productRef = B75A12C02F3EC0BE0008067D /* Sharing */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		B705AD692D12B44600DCB6EE /* BlokusTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BlokusTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B71C82552D113CFB006275BE /* Blokus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Blokus.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -32,11 +28,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		B705AD6A2D12B44600DCB6EE /* BlokusTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BlokusTests;
-			sourceTree = "<group>";
-		};
 		B71C82572D113CFB006275BE /* Blokus */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -48,17 +39,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		B705AD662D12B44600DCB6EE /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		B71C82522D113CFB006275BE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B75A129D2F3EB5D30008067D /* DependenciesMacros in Frameworks */,
+				B75A129B2F3EB5D30008067D /* Dependencies in Frameworks */,
+				B75A12A22F3EB5E10008067D /* ComposableArchitecture in Frameworks */,
+				B75A12C12F3EC0BE0008067D /* Sharing in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -69,7 +57,7 @@
 			isa = PBXGroup;
 			children = (
 				B71C82572D113CFB006275BE /* Blokus */,
-				B705AD6A2D12B44600DCB6EE /* BlokusTests */,
+				B75A12A02F3EB5E10008067D /* Frameworks */,
 				B71C82562D113CFB006275BE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -78,37 +66,20 @@
 			isa = PBXGroup;
 			children = (
 				B71C82552D113CFB006275BE /* Blokus.app */,
-				B705AD692D12B44600DCB6EE /* BlokusTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B75A12A02F3EB5E10008067D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B705AD682D12B44600DCB6EE /* BlokusTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = B705AD6F2D12B44600DCB6EE /* Build configuration list for PBXNativeTarget "BlokusTests" */;
-			buildPhases = (
-				B705AD652D12B44600DCB6EE /* Sources */,
-				B705AD662D12B44600DCB6EE /* Frameworks */,
-				B705AD672D12B44600DCB6EE /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				B705AD6E2D12B44600DCB6EE /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				B705AD6A2D12B44600DCB6EE /* BlokusTests */,
-			);
-			name = BlokusTests;
-			packageProductDependencies = (
-			);
-			productName = BlokusTests;
-			productReference = B705AD692D12B44600DCB6EE /* BlokusTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 		B71C82542D113CFB006275BE /* Blokus */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B71C82642D113CFC006275BE /* Build configuration list for PBXNativeTarget "Blokus" */;
@@ -126,6 +97,10 @@
 			);
 			name = Blokus;
 			packageProductDependencies = (
+				B75A129A2F3EB5D30008067D /* Dependencies */,
+				B75A129C2F3EB5D30008067D /* DependenciesMacros */,
+				B75A12A12F3EB5E10008067D /* ComposableArchitecture */,
+				B75A12C02F3EC0BE0008067D /* Sharing */,
 			);
 			productName = Blokus;
 			productReference = B71C82552D113CFB006275BE /* Blokus.app */;
@@ -141,10 +116,6 @@
 				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
-					B705AD682D12B44600DCB6EE = {
-						CreatedOnToolsVersion = 16.2;
-						TestTargetID = B71C82542D113CFB006275BE;
-					};
 					B71C82542D113CFB006275BE = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -155,29 +126,27 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				ja,
 				Base,
 			);
 			mainGroup = B71C824C2D113CFB006275BE;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B75A12982F3EB5AB0008067D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				B75A12992F3EB5D30008067D /* XCRemoteSwiftPackageReference "swift-dependencies" */,
+				B75A12BF2F3EC0BE0008067D /* XCRemoteSwiftPackageReference "swift-sharing" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B71C82562D113CFB006275BE /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				B71C82542D113CFB006275BE /* Blokus */,
-				B705AD682D12B44600DCB6EE /* BlokusTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		B705AD672D12B44600DCB6EE /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		B71C82532D113CFB006275BE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -188,13 +157,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		B705AD652D12B44600DCB6EE /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		B71C82512D113CFB006275BE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -204,64 +166,7 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXTargetDependency section */
-		B705AD6E2D12B44600DCB6EE /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = B71C82542D113CFB006275BE /* Blokus */;
-			targetProxy = B705AD6D2D12B44600DCB6EE /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
 /* Begin XCBuildConfiguration section */
-		B705AD702D12B44600DCB6EE /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = AV9FQ3YF56;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tomokisun.BlokusTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Blokus.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Blokus";
-			};
-			name = Debug;
-		};
-		B705AD712D12B44600DCB6EE /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = AV9FQ3YF56;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.tomokisun.BlokusTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Blokus.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Blokus";
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
 		B71C82622D113CFC006275BE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -400,7 +305,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
@@ -441,7 +346,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
@@ -461,15 +366,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B705AD6F2D12B44600DCB6EE /* Build configuration list for PBXNativeTarget "BlokusTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				B705AD702D12B44600DCB6EE /* Debug */,
-				B705AD712D12B44600DCB6EE /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		B71C82502D113CFB006275BE /* Build configuration list for PBXProject "Blokus" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -489,6 +385,56 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B75A12982F3EB5AB0008067D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.23.1;
+			};
+		};
+		B75A12992F3EB5D30008067D /* XCRemoteSwiftPackageReference "swift-dependencies" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-dependencies";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.11.0;
+			};
+		};
+		B75A12BF2F3EC0BE0008067D /* XCRemoteSwiftPackageReference "swift-sharing" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-sharing";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.7.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B75A129A2F3EB5D30008067D /* Dependencies */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B75A12992F3EB5D30008067D /* XCRemoteSwiftPackageReference "swift-dependencies" */;
+			productName = Dependencies;
+		};
+		B75A129C2F3EB5D30008067D /* DependenciesMacros */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B75A12992F3EB5D30008067D /* XCRemoteSwiftPackageReference "swift-dependencies" */;
+			productName = DependenciesMacros;
+		};
+		B75A12A12F3EB5E10008067D /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B75A12982F3EB5AB0008067D /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+		B75A12C02F3EC0BE0008067D /* Sharing */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B75A12BF2F3EC0BE0008067D /* XCRemoteSwiftPackageReference "swift-sharing" */;
+			productName = Sharing;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B71C824D2D113CFB006275BE /* Project object */;
 }

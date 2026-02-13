@@ -1,38 +1,17 @@
 import SwiftUI
+import ComposableArchitecture
 
 struct NewGameView: View {
-  @Binding var state: GameState
-  
-  @State var isHighlight = true
-  @State var computerMode = true
-  @State var computerLevel = ComputerLevel.easy
-  
-  init(state: Binding<GameState>) {
-    self._state = state
-  }
+  @Bindable var store: StoreOf<RootFeature>
 
   var body: some View {
     List {
-      Toggle("Show Highlight", isOn: $isHighlight)
+      Toggle(String(localized: "Show Highlight"), isOn: $store.isHighlight)
 
-      Toggle("Computer Mode", isOn: $computerMode)
-      
-      if computerMode {
-        Picker("Computer Level", selection: $computerLevel) {
-          ForEach(ComputerLevel.allCases, id: \.rawValue) { level in
-            Text(level.rawValue).tag(level)
-          }
-        }
-      }
+      Toggle(String(localized: "Computer Mode"), isOn: $store.computerMode)
 
-      Button("Start Game") {
-        withAnimation(.default) {
-          state = .playing(
-            computerMode: computerMode,
-            computerLevel: computerLevel,
-            isHighlight: isHighlight
-          )
-        }
+      Button(String(localized: "Start Game")) {
+        store.send(.startGameButtonTapped)
       }
     }
   }

@@ -1,6 +1,6 @@
 import Foundation
 
-// 回転を表すenum (90度刻み)
+// Rotation values in 90-degree increments.
 enum Rotation: Double, Codable, Equatable {
   case none = 0
   case ninety = 90

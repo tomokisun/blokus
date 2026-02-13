@@ -10,15 +10,15 @@ enum PlacementError: Error, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .outOfBounds:
-      return "ピースがボード外にはみ出しています"
+      return String(localized: "Piece is out of board.")
     case .cellOccupied:
-      return "その位置には既に駒が置かれています"
+      return String(localized: "A piece is already placed there.")
     case .firstMoveMustIncludeCorner:
-      return "初回配置はプレイヤーのコーナーセルを含めなければなりません"
+      return String(localized: "The first move must include your corner cell.")
     case .mustTouchOwnPieceByCorner:
-      return "自分の駒と少なくとも一つの角で接していません"
+      return String(localized: "Must touch your own piece at least at one corner.")
     case .cannotShareEdgeWithOwnPiece:
-      return "自分の駒と辺で接してはいけません（角接触のみ可）"
+      return String(localized: "You cannot share an edge with your own pieces.")
     }
   }
 }

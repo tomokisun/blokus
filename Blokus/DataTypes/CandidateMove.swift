@@ -1,14 +1,14 @@
 import Foundation
 
-/// `CandidateMove` は、コンピュータが検討中の配置候補手を表す構造体です。
-/// ピース本体、配置位置、回転状態、反転状態を持ちます。
+/// Represents a candidate move considered by the AI.
+/// Includes piece, placement coordinate, rotation, and flip flags.
 struct CandidateMove {
-  /// 配置を検討するピース。
+  /// Piece to evaluate.
   let piece: Piece
-  /// ピースを配置する座標。
+  /// Coordinate where the piece is placed.
   let origin: Coordinate
-  /// ピースの回転状態（0°, 90°, 180°, 270°）。
+  /// Piece rotation state (`0°`, `90°`, `180°`, `270°`).
   let rotation: Rotation
-  /// ピースが反転されているかどうか。
+  /// Whether the piece is flipped.
   let flipped: Bool
 }

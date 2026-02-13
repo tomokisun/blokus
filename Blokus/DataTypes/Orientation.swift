@@ -1,6 +1,6 @@
 import Foundation
 
-// 向きを表す構造体
+// Represents piece orientation.
 struct Orientation: Codable, Equatable {
   var rotation: Rotation
   var flipped: Bool

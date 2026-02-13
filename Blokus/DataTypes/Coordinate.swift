@@ -1,16 +1,15 @@
 import Foundation
 
-// 座標を表す構造体
+// Represents a coordinate on the board.
 struct Coordinate: Codable, Hashable, Equatable {
   let x: Int
   let y: Int
 }
 
 extension Coordinate {
-  /// 斜め方向の近傍セルを取得します。
+  /// Returns diagonal neighboring cells.
   ///
-  /// - Parameter coord: 基準となる座標
-  /// - Returns: 4方向の斜め近傍セル座標の配列
+  /// - Returns: Array of four diagonal neighboring coordinates.
   func diagonalNeighbors() -> [Coordinate] {
     return [
       Coordinate(x: x-1, y: y-1),
@@ -20,10 +19,9 @@ extension Coordinate {
     ]
   }
 
-  /// 上下左右方向の近傍セルを取得します。
+  /// Returns orthogonal neighboring cells.
   ///
-  /// - Parameter coord: 基準となる座標
-  /// - Returns: 上下左右4方向の近傍セル座標の配列
+  /// - Returns: Array of up, down, left, and right neighboring coordinates.
   func edgeNeighbors() -> [Coordinate] {
     return [
       Coordinate(x: x, y: y-1),
@@ -40,7 +38,7 @@ let coordinates: [[Coordinate]] = [
 ]
 
 extension Array where Element == Coordinate {
-  // MARK: - 1マス (a)
+  // MARK: - 1-cell (a)
 
   /// ```
   /// ■
@@ -49,7 +47,7 @@ extension Array where Element == Coordinate {
     Coordinate(x: 0, y: 0)
   ]
   
-  // MARK: - 2マス (b)
+  // MARK: - 2-cells (b)
 
   /// ```
   /// ■
@@ -60,7 +58,7 @@ extension Array where Element == Coordinate {
     Coordinate(x: 0, y: 1)
   ]
   
-  // MARK: - 3マス (c, d)
+  // MARK: - 3-cells (c, d)
 
   /// ```
   /// ■
@@ -83,7 +81,7 @@ extension Array where Element == Coordinate {
     Coordinate(x: 1, y: 1)
   ]
   
-  // MARK: - 4マス (e, f, g, h, i)
+  // MARK: - 4-cells (e, f, g, h, i)
   
   /// ```
   /// ■
@@ -144,7 +142,7 @@ extension Array where Element == Coordinate {
     Coordinate(x: 2, y: 1)
   ]
   
-  // MARK: - 5マス (j～u)
+  // MARK: - 5-cells (j〜u)
   /// ```
   /// ■
   /// ■

@@ -1,6 +1,6 @@
 import Foundation
 
-enum ComputerThinkingState {
+enum ComputerThinkingState: Equatable {
   case idle
   case thinking(Player)
 }

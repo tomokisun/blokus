@@ -5,13 +5,13 @@ protocol Computer: Actor {
   
   init(owner: Player)
   
-  /// コンピュータプレイヤーが次に行うべき配置手を計算して返します。
-  /// ボード上に配置できる最適な候補を探索し、思考レベルに応じたフィルタリングを行います。
+  /// Calculates the next move for the AI player.
+  /// It searches legal candidates and applies filtering based on reasoning level.
   ///
   /// - Parameters:
-  ///   - board: 現在のボード状態
-  ///   - pieces: 現在使用可能なピースの配列
-  /// - Returns: 選択された配置候補(`Candidate`)。配置不可能な場合は`nil`を返します。
+  ///   - board: Current board state.
+  ///   - pieces: Currently available piece list.
+  /// - Returns: Selected `Candidate`. Returns `nil` when no legal move exists.
   func moveCandidate(board: Board, pieces: [Piece]) async -> Candidate?
 }
 
@@ -26,44 +26,35 @@ extension Computer {
     return pieces.filter { $0.owner == owner }
   }
   
-  /// ボードから指定プレイヤーのセルを取得します。
+  /// Returns all cells that belong to the specified player.
   func getPlayerCells(from board: Board, owner: Player) -> Set<Coordinate> {
-    var result = Set<Coordinate>()
-    for x in 0..<Board.width {
-      for y in 0..<Board.height {
-        if board.cells[x][y].owner == owner {
-          result.insert(Coordinate(x: x, y: y))
-        }
-      }
-    }
-    return result
+    board.playerCells(owner: owner)
   }
   
-  /// 配置可能な全ての候補手を算出します。
-  /// ピースの全ての回転・反転組み合わせ(8通り)を試し、ボード上の全座標で
-  /// 配置可能かどうかをチェックして候補手リストを作成します。
+  /// Computes all candidate moves.
+  /// Tries 8 orientation combinations (4 rotations × flip) and checks every board coordinate.
   ///
   /// - Parameters:
-  ///   - board: 現在のボード状態
-  ///   - pieces: コンピュータプレイヤーが所有するピース配列
-  /// - Returns: 配置可能な全候補手の配列
+  ///   - board: Current board state.
+  ///   - pieces: Piece list owned by the AI player.
+  /// - Returns: All legal candidate moves.
   func computeCandidateMoves(board: Board, pieces: [Piece]) -> [CandidateMove] {
     var candidates = [CandidateMove]()
     
     for piece in pieces {
-      // ピースの全オリエンテーションからユニークな形状を取得
+      // Generate unique piece orientations.
       let uniqueOrientations = generateUniqueOrientations(for: piece)
       
-      // ユニークな姿勢について配置可能性を探る
+      // Evaluate each candidate orientation.
       for (rotationCase, flippedCase, _) in uniqueOrientations {
         var testPiece = piece
         testPiece.orientation = Orientation(rotation: rotationCase, flipped: flippedCase)
         
-        // ボード全域探索
+        // Scan all board coordinates.
         for x in 0..<Board.width {
           for y in 0..<Board.height {
             let origin = Coordinate(x: x, y: y)
-            if board.canPlacePiece(piece: testPiece, at: origin) {
+            if BoardLogic.canPlacePiece(piece: testPiece, at: origin, in: board) {
               candidates.append(
                 CandidateMove(
                   piece: piece,
@@ -80,9 +71,8 @@ extension Computer {
     return candidates
   }
   
-  /// ピースの全8通り(4回転×flipped有無)の形状を生成し、重複を取り除く。
-  /// 返値は (rotation, flipped, shapeCoords) のタプル配列で、
-  /// shapeCoordsは正規化した座標セットを元に一意性判定を行う。
+  /// Generates all 8 shapes (4 rotations × flip on/off) and removes duplicates.
+  /// Returned tuple: `(rotation, flipped, normalizedShapeCoordinates)`.
   private func generateUniqueOrientations(for piece: Piece) -> [(Rotation, Bool, Set<Coordinate>)] {
     let rotations: [Rotation] = [.none, .ninety, .oneEighty, .twoSeventy]
     let flips: [Bool] = [false, true]
@@ -96,7 +86,7 @@ extension Computer {
         testPiece.orientation = Orientation(rotation: r, flipped: f)
         let transformed = testPiece.transformedShape()
         
-        // 座標群をSetにし、相対位置が比較可能なように正規化
+        // Normalize coordinates so relative position can be compared consistently.
         let normalized = normalizeShapeCoordinates(transformed)
         if !seenShapes.contains(normalized) {
           seenShapes.insert(normalized)
@@ -108,8 +98,8 @@ extension Computer {
     return results
   }
   
-  /// 座標群を正規化する関数。
-  /// 形状比較のために、最小x,yを0に合わせて平行移動しておく。
+  /// Normalizes a set of coordinates.
+  /// Translates the shape so that the minimum x/y become zero for comparison.
   private func normalizeShapeCoordinates(_ coords: [Coordinate]) -> Set<Coordinate> {
     let minX = coords.map(\.x).min() ?? 0
     let minY = coords.map(\.y).min() ?? 0

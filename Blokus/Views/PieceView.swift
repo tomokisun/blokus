@@ -12,7 +12,7 @@ struct PieceView: View {
     let maxX = shape.map(\.x).max() ?? 0
     let maxY = shape.map(\.y).max() ?? 0
     
-    // 左上を(0,0)に揃える正規化
+    // Normalize cells so the piece starts from the top-left corner (0,0).
     let normalizedCells = Set(shape.map { Coordinate(x: $0.x - minX, y: $0.y - minY) })
     
     Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
