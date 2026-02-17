@@ -1,16 +1,20 @@
-import SwiftUI
-import Domain
+import ComposableArchitecture
 import DesignSystem
+import Domain
 import Features
+import SwiftUI
 
 @main
 struct BlokusApp: App {
-  @State private var viewModel = GameViewModel()
+  let store = Store(initialState: Root.State()) {
+    Root()
+      ._printChanges()
+  }
 
   var body: some Scene {
     WindowGroup {
       GeometryReader { proxy in
-        RootView(viewModel: viewModel)
+        RootView(store: store)
           .environment(\.cellSize, proxy.size.width / CGFloat(BoardConstants.boardSize))
       }
     }

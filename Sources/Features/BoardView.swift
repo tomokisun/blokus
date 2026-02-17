@@ -1,20 +1,21 @@
 #if canImport(SwiftUI) && (os(iOS) || os(tvOS) || os(macOS) || os(watchOS) || os(visionOS))
-import SwiftUI
-import Domain
+import ComposableArchitecture
 import DesignSystem
+import Domain
+import SwiftUI
 
 public struct BoardView: View {
   @Environment(\.cellSize) var cellSize
-  let viewModel: GameViewModel
+  let store: StoreOf<Game>
 
-  public init(viewModel: GameViewModel) {
-    self.viewModel = viewModel
+  public init(store: StoreOf<Game>) {
+    self.store = store
   }
 
   public var body: some View {
-    let state = viewModel.currentState
-    let highlightCells = viewModel.highlightCells
-    let previewCells = previewCellsAt(viewModel: viewModel)
+    let state = store.gameState
+    let highlightCells = store.highlightCells
+    let previewCells = previewCellsAt()
 
     Grid(horizontalSpacing: 0, verticalSpacing: 0) {
       ForEach(0..<BoardConstants.boardSize, id: \.self) { y in
@@ -44,8 +45,7 @@ public struct BoardView: View {
             .border(Color.black, width: 0.5)
             .contentShape(Rectangle())
             .onTapGesture {
-              guard !viewModel.isGameOver else { return }
-              viewModel.tapBoard(at: point)
+              store.send(.boardCellTapped(point))
             }
           }
         }
@@ -53,10 +53,8 @@ public struct BoardView: View {
     }
   }
 
-  private func previewCellsAt(viewModel: GameViewModel) -> Set<BoardPoint> {
-    // Show preview of where the piece would land when hovering over a highlight cell
-    // For now, no live preview - just show highlights
-    return []
+  private func previewCellsAt() -> Set<BoardPoint> {
+    []
   }
 }
 #endif

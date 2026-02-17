@@ -16,6 +16,9 @@ let package = Package(
     .library(name: "DesignSystem", targets: ["DesignSystem"]),
     .library(name: "Features", targets: ["Features"]),
   ],
+  dependencies: [
+    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.23.1")
+  ],
   targets: [
     .target(name: "Domain", path: "Sources/Domain"),
     .target(
@@ -36,11 +39,25 @@ let package = Package(
     ),
     .target(
       name: "Features",
-      dependencies: ["DesignSystem", "Engine", "Persistence", "Domain"],
+      dependencies: [
+        "DesignSystem",
+        "Engine",
+        "Persistence",
+        "Domain",
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ],
     ),
     .testTarget(
       name: "BlokusAppTests",
-      dependencies: ["Domain", "Engine", "Persistence", "Connector", "DesignSystem", "Features"]
+      dependencies: [
+        "Domain",
+        "Engine",
+        "Persistence",
+        "Connector",
+        "DesignSystem",
+        "Features",
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
     ),
   ]
 )

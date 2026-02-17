@@ -1,22 +1,20 @@
 #if canImport(SwiftUI) && (os(iOS) || os(tvOS) || os(macOS) || os(watchOS) || os(visionOS))
+import ComposableArchitecture
 import SwiftUI
 
 public struct NewGameView: View {
-  let viewModel: GameViewModel
+  @Bindable var store: StoreOf<NewGame>
 
-  public init(viewModel: GameViewModel) {
-    self.viewModel = viewModel
+  public init(store: StoreOf<NewGame>) {
+    self.store = store
   }
 
   public var body: some View {
     List {
-      Toggle("Show Highlight", isOn: Binding(
-        get: { viewModel.showHighlight },
-        set: { viewModel.showHighlight = $0 }
-      ))
+      Toggle("Show Highlight", isOn: $store.showHighlight)
 
       Button("Start Game") {
-        viewModel.startGame(showHighlight: viewModel.showHighlight)
+        store.send(.startGameButtonTapped)
       }
     }
   }

@@ -1,28 +1,28 @@
 #if canImport(SwiftUI) && (os(iOS) || os(tvOS) || os(macOS) || os(watchOS) || os(visionOS))
-import SwiftUI
-import Domain
+import ComposableArchitecture
 import DesignSystem
+import Domain
+import SwiftUI
 
 public struct GameView: View {
   @Environment(\.cellSize) var cellSize
-  let viewModel: GameViewModel
+  let store: StoreOf<Game>
 
-  public init(viewModel: GameViewModel) {
-    self.viewModel = viewModel
+  public init(store: StoreOf<Game>) {
+    self.store = store
   }
 
   public var body: some View {
     VStack(spacing: 12) {
-      // Game Over banner
-      if viewModel.isGameOver {
+      if store.isGameOver {
         VStack(spacing: 8) {
           Text("Game Over")
             .font(.headline)
             .fontWeight(.bold)
 
-          let winners = viewModel.winnerPlayerIds
+          let winners = store.winnerPlayerIds
           if winners.count == 1 {
-            let winnerIndex = viewModel.currentState.turnOrder.firstIndex(of: winners[0]) ?? 0
+            let winnerIndex = store.gameState.turnOrder.firstIndex(of: winners[0]) ?? 0
             Text("\(winners[0].displayName) wins!")
               .foregroundStyle(PlayerColor.color(for: winnerIndex))
               .font(.title3)
@@ -32,20 +32,18 @@ public struct GameView: View {
           }
 
           Button("New Game") {
-            viewModel.backToMenu()
+            store.send(.newGameButtonTapped)
           }
           .buttonStyle(.borderedProminent)
         }
         .padding(.vertical, 8)
       }
 
-      // Board
-      BoardView(viewModel: viewModel)
+      BoardView(store: store)
 
       VStack(spacing: 12) {
-        // Player score picker (read-only segmented display)
-        Picker(selection: .constant(viewModel.activePlayerIndex)) {
-          ForEach(Array(viewModel.scores.enumerated()), id: \.offset) { index, entry in
+        Picker(selection: .constant(store.activePlayerIndex)) {
+          ForEach(Array(store.scores.enumerated()), id: \.offset) { index, entry in
             Text("\(entry.playerId.displayName): \(entry.score)pt")
               .tag(index)
           }
@@ -55,73 +53,70 @@ public struct GameView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal, 20)
 
-        // Control buttons
         HStack(spacing: 40) {
           Button {
-            viewModel.rotatePiece()
+            store.send(.rotateButtonTapped)
           } label: {
             Label("Rotate", systemImage: "rotate.left")
           }
-          .disabled(viewModel.selectedPieceId == nil)
+          .disabled(store.selectedPieceId == nil)
 
           Button("New Game") {
-            viewModel.backToMenu()
+            store.send(.newGameButtonTapped)
           }
 
           Button {
-            viewModel.flipPiece()
+            store.send(.flipButtonTapped)
           } label: {
             Label("Flip", systemImage: "trapezoid.and.line.vertical")
           }
-          .disabled(viewModel.selectedPieceId == nil)
+          .disabled(store.selectedPieceId == nil)
         }
       }
 
-      // Piece selection
       ScrollView(.vertical) {
         LazyVGrid(
           columns: Array(repeating: GridItem(spacing: 0), count: 3),
           alignment: .center,
           spacing: 0
         ) {
-          ForEach(viewModel.remainingPiecesForCurrentPlayer, id: \.id) { piece in
+          ForEach(store.remainingPiecesForCurrentPlayer, id: \.id) { piece in
             let variant = piece.variants[
-              viewModel.selectedPieceId == piece.id ? viewModel.selectedVariantIndex % piece.variants.count : 0
+              store.selectedPieceId == piece.id ? store.selectedVariantIndex % piece.variants.count : 0
             ]
             Button {
-              viewModel.selectPiece(piece.id)
+              store.send(.pieceTapped(piece.id))
             } label: {
               PieceView(
                 cellSize: cellSize,
                 cells: variant,
-                color: PlayerColor.color(for: viewModel.activePlayerIndex)
+                color: PlayerColor.color(for: store.activePlayerIndex)
               )
               .padding()
               .background(
-                viewModel.selectedPieceId == piece.id
-                  ? PlayerColor.color(for: viewModel.activePlayerIndex).opacity(0.2)
+                store.selectedPieceId == piece.id
+                  ? PlayerColor.color(for: store.activePlayerIndex).opacity(0.2)
                   : Color.clear
               )
               .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .disabled(viewModel.isGameOver)
+            .disabled(store.isGameOver)
           }
         }
         .padding(.horizontal, 20)
 
-        // Pass button
         Button {
-          viewModel.pass()
+          store.send(.passButtonTapped)
         } label: {
           Text("Pass")
             .frame(height: cellSize * 3)
             .frame(maxWidth: .infinity)
         }
-        .disabled(!viewModel.canPass || viewModel.isGameOver)
+        .disabled(!store.canPass || store.isGameOver)
         .padding(.horizontal, 20)
       }
-      .sensoryFeedback(.impact, trigger: viewModel.selectedPieceId)
-      .sensoryFeedback(.impact, trigger: viewModel.activePlayerIndex)
+      .sensoryFeedback(.impact, trigger: store.selectedPieceId)
+      .sensoryFeedback(.impact, trigger: store.activePlayerIndex)
     }
   }
 }

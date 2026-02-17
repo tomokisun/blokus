@@ -1,13 +1,14 @@
 #if canImport(SwiftUI) && (os(iOS) || os(tvOS) || os(macOS) || os(watchOS) || os(visionOS))
-import SwiftUI
-import Domain
+import ComposableArchitecture
 import DesignSystem
+import Domain
+import SwiftUI
 
 public struct GameOverView: View {
-  let viewModel: GameViewModel
+  let store: StoreOf<Game>
 
-  public init(viewModel: GameViewModel) {
-    self.viewModel = viewModel
+  public init(store: StoreOf<Game>) {
+    self.store = store
   }
 
   public var body: some View {
@@ -16,10 +17,10 @@ public struct GameOverView: View {
         .font(.largeTitle)
         .fontWeight(.bold)
 
-      let sortedScores = viewModel.scores.sorted { $0.score > $1.score }
+      let sortedScores = store.scores.sorted { $0.score > $1.score }
 
       ForEach(Array(sortedScores.enumerated()), id: \.offset) { index, entry in
-        let playerIndex = viewModel.currentState.turnOrder.firstIndex(of: entry.playerId) ?? 0
+        let playerIndex = store.gameState.turnOrder.firstIndex(of: entry.playerId) ?? 0
         HStack {
           Text("#\(index + 1)")
             .font(.title2)
@@ -38,7 +39,7 @@ public struct GameOverView: View {
       }
 
       Button("New Game") {
-        viewModel.backToMenu()
+        store.send(.newGameButtonTapped)
       }
       .buttonStyle(.borderedProminent)
       .padding(.top)

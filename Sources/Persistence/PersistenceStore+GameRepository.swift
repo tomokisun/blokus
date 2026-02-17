@@ -136,4 +136,41 @@ extension PersistenceStore {
       latestRetryCount: latestRetryCount
     )
   }
+
+  public func applySubmitResult(
+    _ result: GameSubmitStatus,
+    command: GameCommand,
+    engine: GameEngine
+  ) throws {
+    switch result {
+    case let .accepted(state):
+      try upsertGame(state, gameId: command.gameId)
+      if let event = engine.events.first(where: { $0.commandId == command.commandId }) {
+        try upsertEvent(event, gameId: command.gameId)
+      }
+      try clearGaps(gameId: command.gameId)
+
+    case let .queued(state, _):
+      try upsertGame(state, gameId: command.gameId)
+      try syncEventGaps(gameId: command.gameId, gaps: state.eventGaps)
+
+    case let .duplicate(state, _):
+      try upsertGame(state, gameId: command.gameId)
+
+    case let .rejected(state, _, _):
+      try upsertGame(state, gameId: command.gameId)
+
+    case let .authorityMismatch(state):
+      try upsertGame(state, gameId: command.gameId)
+    }
+
+    guard bootstrapError == nil else { return }
+    try appendSubmitAudit(
+      gameId: command.gameId,
+      command: command,
+      state: engine.state,
+      phase: engine.state.phase,
+      status: result
+    )
+  }
 }

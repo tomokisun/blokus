@@ -1,20 +1,21 @@
 #if canImport(SwiftUI) && (os(iOS) || os(tvOS) || os(macOS) || os(watchOS) || os(visionOS))
+import ComposableArchitecture
 import SwiftUI
 
 public struct RootView: View {
-  let viewModel: GameViewModel
+  let store: StoreOf<Root>
 
-  public init(viewModel: GameViewModel) {
-    self.viewModel = viewModel
+  public init(store: StoreOf<Root>) {
+    self.store = store
   }
 
   public var body: some View {
     Group {
-      if viewModel.isGameStarted {
-        GameView(viewModel: viewModel)
+      if let gameStore = store.scope(state: \.game, action: \.game) {
+        GameView(store: gameStore)
       } else {
         NavigationStack {
-          NewGameView(viewModel: viewModel)
+          NewGameView(store: store.scope(state: \.newGame, action: \.newGame))
             .navigationTitle("Blokus")
         }
       }
