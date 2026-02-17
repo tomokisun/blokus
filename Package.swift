@@ -15,6 +15,8 @@ let package = Package(
     .library(name: "Connector", targets: ["Connector"]),
     .library(name: "DesignSystem", targets: ["DesignSystem"]),
     .library(name: "Features", targets: ["Features"]),
+    .library(name: "AICore", targets: ["AICore"]),
+    .executable(name: "TrainerCLI", targets: ["TrainerCLI"]),
   ],
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.23.1")
@@ -47,6 +49,21 @@ let package = Package(
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ],
     ),
+    .target(
+      name: "AICore",
+      dependencies: [
+        "Domain",
+        "Engine",
+      ],
+    ),
+    .executableTarget(
+      name: "TrainerCLI",
+      dependencies: [
+        "AICore",
+        "Domain",
+      ],
+      path: "Sources/TrainerCLI",
+    ),
     .testTarget(
       name: "BlokusAppTests",
       dependencies: [
@@ -56,6 +73,7 @@ let package = Package(
         "Connector",
         "DesignSystem",
         "Features",
+        "AICore",
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
     ),

@@ -15,6 +15,8 @@ BlokusApp は、Blokus の対戦を扱う Swift マルチターゲットパッ�
 - [永続化と運用](#永続化と運用)
 - [テスト](#テスト)
 - [設計情報](#設計情報)
+- [学習CLI (macOS)](#学習cli-macos)
+- [学習計画とCoreML運用](#学習計画とcoreml運用)
 
 ## 概要
 
@@ -183,3 +185,79 @@ swift test
 - `coordinationSeq` と hash chain ベースの整合性
 - 欠番・再取得・repair/readOnly 遷移の方針
 - 製品リリース判断基準（Definition of Done）
+
+## 学習CLI (macOS)
+
+`TrainerCLI` ターゲットを使うと、M4 Mac mini で自己対戦データを生成できます。
+
+### 実行例
+
+```bash
+swift run TrainerCLI selfplay \
+  --games 128 \
+  --players 4 \
+  --simulations 480 \
+  --max-candidates 56 \
+  --parallel 8 \
+  --output TrainingRuns/run-001
+```
+
+実行中は進捗が出ます（完了局数・割合・生成局面数・速度・ETA）。
+
+```text
+[progress] 32/128 (25.0%) positions=1845 speed=1.27 game/s elapsed=00:25 eta=01:15
+```
+
+### 生成物
+
+- `positions.ndjson`: 盤面エンコード、選択手、方策分布、最終アウトカム
+- `games.ndjson`: 各対局の勝者・手数・最終スコア
+- `metadata.json`: 実行時間、設定、データ件数
+
+### 学習
+
+```bash
+swift run TrainerCLI train \
+  --data TrainingRuns/run-001 \
+  --output Models/model-001.json \
+  --label model-001
+```
+
+### 評価
+
+```bash
+swift run TrainerCLI eval \
+  --model-a Models/model-prev.json \
+  --model-b Models/model-001.json \
+  --games 2000 \
+  --output Reports/eval-model-001.json
+```
+
+### 書き出し
+
+```bash
+swift run TrainerCLI export \
+  --model Models/model-001.json \
+  --output Exports/export-model-001
+```
+
+### M4 Mac mini 向け Make プリセット
+
+```bash
+make m4-all
+```
+
+個別実行:
+
+```bash
+make m4-selfplay
+make m4-merge
+make m4-train
+make m4-eval
+make m4-export
+```
+
+## 学習計画とCoreML運用
+
+- トレーニング計画: `TRAINING_PLAN.md`
+- CoreML運用ガイド: `COREML_GUIDE.md`
