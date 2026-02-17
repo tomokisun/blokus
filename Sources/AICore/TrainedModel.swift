@@ -135,11 +135,6 @@ public enum TrainingDatasetReader {
     progress: ((Int) -> Void)? = nil
   ) throws -> [TrainingPosition] {
     let positionsFile = resolvePositionsFile(from: path)
-    let data = try Data(contentsOf: positionsFile)
-    guard let text = String(data: data, encoding: .utf8) else {
-      throw NSError(domain: "TrainingDatasetReader", code: 1, userInfo: [NSLocalizedDescriptionKey: "positions.ndjson のUTF-8デコードに失敗しました"])
-    }
-
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
 
@@ -148,29 +143,82 @@ public enum TrainingDatasetReader {
     positions.reserveCapacity(min(cappedLimit ?? 50000, 200000))
 
     var loaded = 0
-    for rawLine in text.split(separator: "\n", omittingEmptySubsequences: true) {
+    let handle = try FileHandle(forReadingFrom: positionsFile)
+    defer { try? handle.close() }
+
+    var buffer = Data()
+    let newLine = Data([0x0A])
+
+    while true {
       if let cappedLimit, loaded >= cappedLimit {
         break
       }
-      let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-      if line.isEmpty { continue }
 
-      do {
-        let position = try decoder.decode(TrainingPosition.self, from: Data(line.utf8))
-        positions.append(position)
-        loaded += 1
-        if loaded == 1 || loaded % 10000 == 0 {
-          progress?(loaded)
+      let chunk = try handle.read(upToCount: 1 << 20) ?? Data()
+      if chunk.isEmpty {
+        break
+      }
+      buffer.append(chunk)
+
+      while let lineRange = buffer.firstRange(of: newLine) {
+        if let cappedLimit, loaded >= cappedLimit {
+          break
         }
-      } catch {
-        throw NSError(
-          domain: "TrainingDatasetReader",
-          code: 2,
-          userInfo: [
-            NSLocalizedDescriptionKey: "positions.ndjson のデコードに失敗しました (line: \(loaded + 1))",
-            NSUnderlyingErrorKey: error,
-          ]
-        )
+
+        let lineData = Data(buffer[..<lineRange.lowerBound])
+        buffer.removeSubrange(..<lineRange.upperBound)
+
+        let line = String(data: lineData, encoding: .utf8)?
+          .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if line.isEmpty {
+          continue
+        }
+
+        do {
+          let position = try decoder.decode(TrainingPosition.self, from: Data(line.utf8))
+          positions.append(position)
+          loaded += 1
+          if loaded == 1 || loaded % 10000 == 0 {
+            progress?(loaded)
+          }
+        } catch {
+          throw NSError(
+            domain: "TrainingDatasetReader",
+            code: 2,
+            userInfo: [
+              NSLocalizedDescriptionKey: "positions.ndjson のデコードに失敗しました (line: \(loaded + 1))",
+              NSUnderlyingErrorKey: error,
+            ]
+          )
+        }
+      }
+    }
+
+    let canDecodeTail: Bool
+    if let cappedLimit {
+      canDecodeTail = loaded < cappedLimit
+    } else {
+      canDecodeTail = true
+    }
+
+    if canDecodeTail, !buffer.isEmpty {
+      let tailLine = String(data: buffer, encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      if !tailLine.isEmpty {
+        do {
+          let position = try decoder.decode(TrainingPosition.self, from: Data(tailLine.utf8))
+          positions.append(position)
+          loaded += 1
+        } catch {
+          throw NSError(
+            domain: "TrainingDatasetReader",
+            code: 2,
+            userInfo: [
+              NSLocalizedDescriptionKey: "positions.ndjson のデコードに失敗しました (line: \(loaded + 1))",
+              NSUnderlyingErrorKey: error,
+            ]
+          )
+        }
       }
     }
 

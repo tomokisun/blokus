@@ -69,7 +69,7 @@ m4-selfplay: prepare
 		log="$(RUN_ROOT)/shard-$$i.log"; \
 		mkdir -p "$$out"; \
 		echo "  shard $$i -> $$out (seed=$$seed)"; \
-		$(BIN) selfplay \
+		( $(BIN) selfplay \
 			--games $(SELFPLAY_GAMES_PER_SHARD) \
 			--players $(SELFPLAY_PLAYERS) \
 			--simulations $(SELFPLAY_SIMULATIONS) \
@@ -78,7 +78,7 @@ m4-selfplay: prepare
 			--parallel $(SELFPLAY_PARALLEL_PER_SHARD) \
 			--seed $$seed \
 			--output "$$out" \
-			> "$$log" 2>&1 & \
+			2>&1 | tee "$$log" | sed "s/^/[shard-$$i] /" ) & \
 	done; \
 	wait
 	@echo "selfplay done: $(RUN_ROOT)"
