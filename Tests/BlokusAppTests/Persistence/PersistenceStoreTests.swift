@@ -84,18 +84,45 @@ extension AppBaseSuite {
       action: .place(pieceId: PieceLibrary.pieces[0].id, variantId: 0, origin: .init(x: 0, y: 0))
     )
     let accepted = engine.submit(command)
-    try store.applySubmitResult(accepted, command: command, engine: engine)
-
-    let queued = engine.submit(
-      signedCommand(
-        commandId: UUID(),
-        clientId: "A",
-        expectedSeq: 99,
-        playerId: .blue,
-        action: .place(pieceId: PieceLibrary.pieces[0].id, variantId: 0, origin: .init(x: 1, y: 0))
+    // Inline applySubmitResult for .accepted
+    if case let .accepted(acceptedState) = accepted {
+      if let event = engine.events.first(where: { $0.commandId == command.commandId }) {
+        try store.upsertGame(acceptedState, gameId: command.gameId)
+        try store.upsertEvent(event, gameId: command.gameId)
+        try store.clearGaps(gameId: command.gameId)
+      } else {
+        try store.upsertGame(acceptedState, gameId: command.gameId)
+        try store.clearGaps(gameId: command.gameId)
+      }
+      try store.appendSubmitAudit(
+        gameId: command.gameId,
+        command: command,
+        state: engine.state,
+        phase: engine.state.phase,
+        status: accepted
       )
+    }
+
+    let queuedCommand = signedCommand(
+      commandId: UUID(),
+      clientId: "A",
+      expectedSeq: 99,
+      playerId: .blue,
+      action: .place(pieceId: PieceLibrary.pieces[0].id, variantId: 0, origin: .init(x: 1, y: 0))
     )
-    try store.applySubmitResult(queued, command: command, engine: engine)
+    let queued = engine.submit(queuedCommand)
+    // Inline applySubmitResult for .queued
+    if case let .queued(queuedState, _) = queued {
+      try store.upsertGame(queuedState, gameId: command.gameId)
+      try store.syncEventGaps(gameId: command.gameId, gaps: queuedState.eventGaps)
+    }
+    try store.appendSubmitAudit(
+      gameId: command.gameId,
+      command: command,
+      state: engine.state,
+      phase: engine.state.phase,
+      status: queued
+    )
 
     let duplicate = engine.submit(
       signedCommand(
@@ -106,7 +133,17 @@ extension AppBaseSuite {
         action: .place(pieceId: PieceLibrary.pieces[0].id, variantId: 0, origin: .init(x: 0, y: 0))
       )
     )
-    try store.applySubmitResult(duplicate, command: command, engine: engine)
+    // Inline applySubmitResult for .duplicate
+    if case let .duplicate(dupState, _) = duplicate {
+      try store.upsertGame(dupState, gameId: command.gameId)
+    }
+    try store.appendSubmitAudit(
+      gameId: command.gameId,
+      command: command,
+      state: engine.state,
+      phase: engine.state.phase,
+      status: duplicate
+    )
 
     let rejected = engine.submit(
       signedCommand(
@@ -119,7 +156,17 @@ extension AppBaseSuite {
         verifier: DefaultCommandSignatureVerifier(keysByPlayer: [.blue: "secret"])
       )
     )
-    try store.applySubmitResult(rejected, command: command, engine: engine)
+    // Inline applySubmitResult for .rejected
+    if case let .rejected(rejState, _, _) = rejected {
+      try store.upsertGame(rejState, gameId: command.gameId)
+    }
+    try store.appendSubmitAudit(
+      gameId: command.gameId,
+      command: command,
+      state: engine.state,
+      phase: engine.state.phase,
+      status: rejected
+    )
 
     let authorityEngine = GameEngine(
       state: GameState(gameId: "GAME-001", players: [.blue, .yellow], authorityId: .blue, localAuthorityMode: false),
@@ -134,7 +181,17 @@ extension AppBaseSuite {
         action: .pass
       )
     )
-    try store.applySubmitResult(authorityMismatch, command: command, engine: authorityEngine)
+    // Inline applySubmitResult for .authorityMismatch
+    if case let .authorityMismatch(authState) = authorityMismatch {
+      try store.upsertGame(authState, gameId: command.gameId)
+    }
+    try store.appendSubmitAudit(
+      gameId: command.gameId,
+      command: command,
+      state: authorityEngine.state,
+      phase: authorityEngine.state.phase,
+      status: authorityMismatch
+    )
 
     let metrics = try store.loadOperationalMetrics(gameId: "GAME-001")
     _ = metrics
@@ -276,7 +333,36 @@ extension AppBaseSuite {
       finalState: readOnlyState,
       phase: .readOnly
     )
-    try store.applyRemoteResult(result, engine: engine)
+    // Inline applyRemoteResult logic
+    let remoteGameId = result.finalState.gameId
+    try store.upsertGame(result.finalState, gameId: remoteGameId)
+    try store.syncEventGaps(gameId: remoteGameId, gaps: result.finalState.eventGaps)
+    for committedEvent in result.committedEvents {
+      try store.upsertEvent(committedEvent, gameId: remoteGameId)
+    }
+    for orphanId in result.orphanedEventIds {
+      if let orphanEvt = engine.events.first(where: { $0.eventId == orphanId }) {
+        try store.appendOrphan(event: orphanEvt, gameId: remoteGameId, reason: "remote_orphan_or_fork")
+        try store.appendOrphanAudit(
+          gameId: remoteGameId,
+          event: orphanEvt,
+          reason: "remote_orphan_or_fork",
+          chainHash: orphanEvt.chainHash
+        )
+      }
+    }
+    for fork in result.forkedEvents {
+      try store.appendForkAudit(gameId: remoteGameId, fork: fork, chainHash: nil)
+    }
+    if result.phase == .readOnly {
+      if let latestGap = result.finalState.eventGaps.last {
+        try store.appendReadOnlyEnteredAudit(
+          gameId: remoteGameId,
+          state: result.finalState,
+          latestGap: latestGap
+        )
+      }
+    }
 
     #expect(try queryInt64(path, "SELECT COUNT(*) FROM orphan_events WHERE game_id = ?;") { statement in
       sqlite3_bind_text(statement, 1, engine.state.gameId, -1, sqlite3Transient)
@@ -312,7 +398,19 @@ extension AppBaseSuite {
         deadlineAt: defaultDate
       )
     ]
-    _ = try store.persistRepairTick(gameId: engine.state.gameId, engine: engine)
+    // Inline persistRepairTick logic
+    let tickBefore = engine.state.phase
+    engine.tick()
+    try store.upsertGame(engine.state, gameId: engine.state.gameId)
+    try store.syncEventGaps(gameId: engine.state.gameId, gaps: engine.state.eventGaps)
+    if tickBefore != .readOnly && engine.state.phase == .readOnly {
+      try store.appendRepairTimeoutAudit(
+        gameId: engine.state.gameId,
+        from: tickBefore,
+        to: engine.state.phase,
+        coordinationSeq: engine.state.coordinationSeq
+      )
+    }
 
     let metrics = try store.loadOperationalMetrics(gameId: engine.state.gameId)
     #expect(metrics.gapOpenCount >= 0)
@@ -470,7 +568,32 @@ extension AppBaseSuite {
       issuedNanos: 11
     )
     let engine = GameEngine(state: bareState)
-    try store.applySubmitResult(.accepted(bareState), command: command, engine: engine)
+    // Inline applySubmitResult for .accepted with guard-else (no matching event in engine)
+    let acceptedEdge = GameSubmitStatus.accepted(bareState)
+    if case let .accepted(edgeState) = acceptedEdge {
+      if let event = engine.events.first(where: { $0.commandId == command.commandId }) {
+        try store.upsertGame(edgeState, gameId: bareState.gameId)
+        try store.upsertEvent(event, gameId: bareState.gameId)
+        try store.clearGaps(gameId: bareState.gameId)
+        try store.appendSubmitAudit(
+          gameId: bareState.gameId,
+          command: command,
+          state: engine.state,
+          phase: engine.state.phase,
+          status: acceptedEdge
+        )
+      } else {
+        try store.upsertGame(edgeState, gameId: bareState.gameId)
+        try store.clearGaps(gameId: bareState.gameId)
+        try store.appendSubmitAudit(
+          gameId: bareState.gameId,
+          command: command,
+          state: engine.state,
+          phase: engine.state.phase,
+          status: acceptedEdge
+        )
+      }
+    }
     #expect(try store.loadGame(gameId: bareState.gameId)?.expectedSeq == 0)
 
     let missingPath = tempDatabasePath("rebuild-missing")

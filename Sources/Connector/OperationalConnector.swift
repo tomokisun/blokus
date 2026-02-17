@@ -36,7 +36,45 @@ public final class OperationalConnector {
     if store.isReadOnly {
       throw ConnectorError.readOnlyMode
     }
-    try store.applySubmitResult(result, command: command, engine: engine)
+    let gameId = command.gameId
+    switch result {
+    case let .accepted(state):
+      guard let event = engine.events.first(where: { $0.commandId == command.commandId }) else {
+        try store.upsertGame(state, gameId: gameId)
+        try store.clearGaps(gameId: gameId)
+        if store.bootstrapError != nil { return result }
+        try store.appendSubmitAudit(
+          gameId: gameId,
+          command: command,
+          state: engine.state,
+          phase: engine.state.phase,
+          status: result
+        )
+        return result
+      }
+      try store.upsertGame(state, gameId: gameId)
+      try store.upsertEvent(event, gameId: gameId)
+      try store.clearGaps(gameId: gameId)
+    case let .queued(state, _):
+      try store.upsertGame(state, gameId: gameId)
+      try store.syncEventGaps(gameId: gameId, gaps: state.eventGaps)
+    case let .duplicate(state, _):
+      try store.upsertGame(state, gameId: gameId)
+    case let .rejected(state, _, _):
+      try store.upsertGame(state, gameId: gameId)
+    case let .authorityMismatch(state):
+      try store.upsertGame(state, gameId: gameId)
+    }
+    if store.bootstrapError != nil {
+      return result
+    }
+    try store.appendSubmitAudit(
+      gameId: gameId,
+      command: command,
+      state: engine.state,
+      phase: engine.state.phase,
+      status: result
+    )
     return result
   }
 
@@ -45,7 +83,35 @@ public final class OperationalConnector {
     if store.isReadOnly {
       throw ConnectorError.readOnlyMode
     }
-    try store.applyRemoteResult(result, engine: engine)
+    let gameId = result.finalState.gameId
+    try store.upsertGame(result.finalState, gameId: gameId)
+    try store.syncEventGaps(gameId: gameId, gaps: result.finalState.eventGaps)
+    for event in result.committedEvents {
+      try store.upsertEvent(event, gameId: gameId)
+    }
+    for orphanId in result.orphanedEventIds {
+      if let event = engine.events.first(where: { $0.eventId == orphanId }) {
+        try store.appendOrphan(event: event, gameId: gameId, reason: "remote_orphan_or_fork")
+        try store.appendOrphanAudit(
+          gameId: gameId,
+          event: event,
+          reason: "remote_orphan_or_fork",
+          chainHash: event.chainHash
+        )
+      }
+    }
+    for fork in result.forkedEvents {
+      try store.appendForkAudit(gameId: gameId, fork: fork, chainHash: nil)
+    }
+    if result.phase == .readOnly {
+      if let latestGap = result.finalState.eventGaps.last {
+        try store.appendReadOnlyEnteredAudit(
+          gameId: gameId,
+          state: result.finalState,
+          latestGap: latestGap
+        )
+      }
+    }
     return result
   }
 
@@ -53,7 +119,19 @@ public final class OperationalConnector {
     if store.isReadOnly {
       return engine.state.phase
     }
-    return try store.persistRepairTick(gameId: gameId, engine: engine)
+    let before = engine.state.phase
+    engine.tick()
+    try store.upsertGame(engine.state, gameId: gameId)
+    try store.syncEventGaps(gameId: gameId, gaps: engine.state.eventGaps)
+    if before != .readOnly && engine.state.phase == .readOnly {
+      try store.appendRepairTimeoutAudit(
+        gameId: gameId,
+        from: before,
+        to: engine.state.phase,
+        coordinationSeq: engine.state.coordinationSeq
+      )
+    }
+    return engine.state.phase
   }
 
   public func recoverFromPersistence() throws -> RecoveryPlan {

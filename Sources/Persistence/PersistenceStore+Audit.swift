@@ -1,6 +1,5 @@
 import Foundation
 import Domain
-import Engine
 
 public extension PersistenceStore {
   func appendSubmitAudit(
@@ -109,114 +108,47 @@ public extension PersistenceStore {
     ))
   }
 
-  func applySubmitResult(
-    _ result: GameSubmitStatus,
-    command: GameCommand,
-    engine: GameEngine
+  func appendReadOnlyEnteredAudit(
+    gameId: String,
+    state: GameState,
+    latestGap: EventGap
   ) throws {
-    let gameId = command.gameId
-    switch result {
-    case let .accepted(state):
-      guard let event = engine.events.first(where: { $0.commandId == command.commandId }) else {
-        try upsertGame(state, gameId: gameId)
-        try clearGaps(gameId: gameId)
-        if bootstrapError != nil { return }
-        try appendSubmitAudit(
-          gameId: gameId,
-          command: command,
-          state: engine.state,
-          phase: engine.state.phase,
-          status: result
-        )
-        return
-      }
-      try upsertGame(state, gameId: gameId)
-      try upsertEvent(event, gameId: gameId)
-      try clearGaps(gameId: gameId)
-    case let .queued(state, _):
-      try upsertGame(state, gameId: gameId)
-      try syncEventGaps(gameId: gameId, gaps: state.eventGaps)
-    case let .duplicate(state, _):
-      try upsertGame(state, gameId: gameId)
-    case let .rejected(state, _, _):
-      try upsertGame(state, gameId: gameId)
-    case let .authorityMismatch(state):
-      try upsertGame(state, gameId: gameId)
-    }
-    if bootstrapError != nil {
-      return
-    }
-    try appendSubmitAudit(
-      gameId: gameId,
-      command: command,
-      state: engine.state,
-      phase: engine.state.phase,
-      status: result
-    )
-  }
-
-  func applyRemoteResult(_ result: RemoteIngestResult, engine: GameEngine) throws {
-    let gameId = result.finalState.gameId
-    try upsertGame(result.finalState, gameId: gameId)
-    try syncEventGaps(gameId: gameId, gaps: result.finalState.eventGaps)
-    for event in result.committedEvents {
-      try upsertEvent(event, gameId: gameId)
-    }
-    for orphanId in result.orphanedEventIds {
-      if let event = engine.events.first(where: { $0.eventId == orphanId }) {
-        try appendOrphan(event: event, gameId: gameId, reason: "remote_orphan_or_fork")
-        try appendOrphanAudit(
-          gameId: gameId,
-          event: event,
-          reason: "remote_orphan_or_fork",
-          chainHash: event.chainHash
-        )
-      }
-    }
-    for fork in result.forkedEvents {
-      try appendForkAudit(gameId: gameId, fork: fork, chainHash: nil)
-    }
-    if result.phase == .readOnly {
-      if let latestGap = result.finalState.eventGaps.last {
-        let details = encodeDetails([
-          "gameId": gameId,
-          "coordinationSeq": "\(result.finalState.coordinationSeq)",
-          "fromSeq": "\(latestGap.fromSeq)",
-          "toSeq": "\(latestGap.toSeq)",
-          "retryCount": "\(latestGap.retryCount)"
-        ])
-        if bootstrapError == nil {
-          try appendAuditLog(SQLiteAuditLog(
-            gameId: gameId,
-            level: "error",
-            category: "repair",
-            message: "entered_read_only",
-            details: details
-          ))
-        }
-      }
-    }
-  }
-
-  func persistRepairTick(gameId: String, engine: GameEngine) throws -> GamePhase {
-    let before = engine.state.phase
-    engine.tick()
-    try upsertGame(engine.state, gameId: gameId)
-    try syncEventGaps(gameId: gameId, gaps: engine.state.eventGaps)
-    if before != .readOnly && engine.state.phase == .readOnly {
-      let phaseDetails = encodeDetails([
-        "from": before.rawValue,
-        "to": engine.state.phase.rawValue,
-        "coordinationSeq": "\(engine.state.coordinationSeq)"
-      ])
+    let details = encodeDetails([
+      "gameId": gameId,
+      "coordinationSeq": "\(state.coordinationSeq)",
+      "fromSeq": "\(latestGap.fromSeq)",
+      "toSeq": "\(latestGap.toSeq)",
+      "retryCount": "\(latestGap.retryCount)"
+    ])
+    if bootstrapError == nil {
       try appendAuditLog(SQLiteAuditLog(
         gameId: gameId,
         level: "error",
         category: "repair",
-        message: "repair_timeout_enter_read_only",
-        details: phaseDetails
+        message: "entered_read_only",
+        details: details
       ))
     }
-    return engine.state.phase
   }
+
+  func appendRepairTimeoutAudit(
+    gameId: String,
+    from: GamePhase,
+    to: GamePhase,
+    coordinationSeq: Int
+  ) throws {
+    let phaseDetails = encodeDetails([
+      "from": from.rawValue,
+      "to": to.rawValue,
+      "coordinationSeq": "\(coordinationSeq)"
+    ])
+    try appendAuditLog(SQLiteAuditLog(
+      gameId: gameId,
+      level: "error",
+      category: "repair",
+      message: "repair_timeout_enter_read_only",
+      details: phaseDetails
+    ))
+  }
+
 }
