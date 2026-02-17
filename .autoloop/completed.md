@@ -35,3 +35,11 @@
 - Domain（PlacementValidator, BoardPoint）、Engine（GapManager）、Features（BoardView, GameViewModel）の全参照箇所を BoardConstants に移行
 - GapManager の operational 定数（initialRetryDelaySec, maxRetries, deadlineWindowSec, maxBackoffSec）も名前付き定数化済み
 - ビルド・89テスト全パス
+
+### 2026-02-18: RemoteEventProcessor 抽出
+- Replication.swift（243→17 LOC）を薄い委譲ラッパーに縮小
+- RemoteEventProcessor.swift 作成: ForkEventRecord, RemoteIngestResult（committedEvents追加）, process() を抽出
+- makeGap/markExistingGapOrCreate を削除し GapManager.registerGap に統合（DRY違反解消）
+- buildCommittedEventFromRemote を RemoteEventProcessor の private static ヘルパーに移動
+- PersistenceStore+Audit.swift の applyRemoteResult: engine.events 線形検索を result.committedEvents に改善
+- ビルド・89テスト全パス

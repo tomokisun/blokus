@@ -260,6 +260,7 @@ extension AppBaseSuite {
 
     let result = RemoteIngestResult(
       acceptedEventIds: [acceptedEvent.eventId],
+      committedEvents: [acceptedEvent],
       queuedRanges: [],
       duplicateCommandIds: [],
       orphanedEventIds: [orphanEvent.eventId],

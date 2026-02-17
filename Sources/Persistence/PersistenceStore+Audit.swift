@@ -159,8 +159,7 @@ public extension PersistenceStore {
     let gameId = result.finalState.gameId
     try upsertGame(result.finalState, gameId: gameId)
     try syncEventGaps(gameId: gameId, gaps: result.finalState.eventGaps)
-    let acceptedSet = Set(result.acceptedEventIds)
-    for event in engine.events where acceptedSet.contains(event.eventId) {
+    for event in result.committedEvents {
       try upsertEvent(event, gameId: gameId)
     }
     for orphanId in result.orphanedEventIds {
