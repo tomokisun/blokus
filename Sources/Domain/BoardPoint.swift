@@ -8,7 +8,7 @@ public struct BoardPoint: Codable, Hashable, Sendable {
   }
 
   public var isInsideBoard: Bool {
-    x >= 0 && x < 20 && y >= 0 && y < 20
+    x >= 0 && x < BoardConstants.boardSize && y >= 0 && y < BoardConstants.boardSize
   }
 
   public func translated(_ dx: Int, _ dy: Int) -> BoardPoint {

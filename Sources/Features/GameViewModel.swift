@@ -50,7 +50,7 @@ public final class GameViewModel {
 
   public var scores: [(playerId: PlayerID, score: Int)] {
     currentState.turnOrder.map { playerId in
-      let score = currentState.board.filter { $0 == playerId }.count
+      let score = currentState.board.filter({ $0 == playerId }).count
       return (playerId: playerId, score: score)
     }
   }
@@ -79,8 +79,8 @@ public final class GameViewModel {
     }
     let activeId = currentState.activePlayerId
     var result = Set<BoardPoint>()
-    for y in 0..<20 {
-      for x in 0..<20 {
+    for y in 0..<BoardConstants.boardSize {
+      for x in 0..<BoardConstants.boardSize {
         let origin = BoardPoint(x: x, y: y)
         if currentState.canPlace(
           pieceId: pieceId,

@@ -936,7 +936,7 @@ extension AppBaseSuite {
   @Test
   func coreHasAnyLegalMoveScansPieceAndReturnsFalse() {
     var blocked = GameState(gameId: "GAME-LEGAL-SCAN", players: [.blue, .yellow], authorityId: .blue)
-    blocked.board = Array(repeating: .yellow, count: 400)
+    blocked.board = Board(cells: Array(repeating: .yellow, count: BoardConstants.boardCellCount))
     blocked.remainingPieces[.blue] = [PieceLibrary.pieces.first?.id ?? "mono-1"]
 
     #expect(blocked.hasAnyLegalMove(for: .blue) == false)

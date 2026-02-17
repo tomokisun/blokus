@@ -1,4 +1,5 @@
 import SwiftUI
+import Domain
 import DesignSystem
 import Features
 
@@ -10,7 +11,7 @@ struct BlokusApp: App {
     WindowGroup {
       GeometryReader { proxy in
         RootView(viewModel: viewModel)
-          .environment(\.cellSize, proxy.size.width / 20)
+          .environment(\.cellSize, proxy.size.width / CGFloat(BoardConstants.boardSize))
       }
     }
   }

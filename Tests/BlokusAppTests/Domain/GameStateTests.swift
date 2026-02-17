@@ -154,10 +154,10 @@ extension AppBaseSuite {
     var state = GameState(gameId: "GAME-ADJ-OK", players: [.blue, .yellow], authorityId: .blue)
     // Manually set up board state:
     // A has a piece at (11,10)
-    state.board[10 * 20 + 11] = .blue
+    state.board[BoardPoint(x: 11, y: 10)] = .blue
     state.remainingPieces[.blue]!.remove("mono-1")
     // B has already placed at (12,12)
-    state.board[12 * 20 + 12] = .yellow
+    state.board[BoardPoint(x: 12, y: 12)] = .yellow
     state.remainingPieces[.yellow]!.remove("mono-1")
 
     // B tries to place domino-2 at (10,11) in vertical orientation:
@@ -172,8 +172,8 @@ extension AppBaseSuite {
     // A is at (11,10) - OVERLAP! Can't do that.
     //
     // Final approach: A at (10,10), B at (12,12), place domino vertical at (11,10)
-    state.board[10 * 20 + 11] = nil
-    state.board[10 * 20 + 10] = .blue
+    state.board[BoardPoint(x: 11, y: 10)] = nil
+    state.board[BoardPoint(x: 10, y: 10)] = .blue
     // domino-2 variant 1 (vertical): origin (11,10), cells at (11,10) and (11,11)
     // (11,10) to A(10,10): diff=(1,0) - SIDE ✓
     // (11,10) to B(12,12): diff=(1,2) - not diagonal

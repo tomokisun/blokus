@@ -2,6 +2,11 @@ import Foundation
 import Domain
 
 public enum GapManager {
+  public static let initialRetryDelaySec: TimeInterval = 1
+  public static let maxRetries = 5
+  public static let deadlineWindowSec: TimeInterval = 31
+  public static let maxBackoffSec: Double = 16.0
+
   public static func tick(state: inout GameState, now: Date = .init()) {
     guard !state.eventGaps.isEmpty else { return }
     for idx in state.eventGaps.indices {
@@ -27,10 +32,10 @@ public enum GapManager {
       toSeq: nowTo,
       detectedAt: now,
       retryCount: 0,
-      nextRetryAt: now.addingTimeInterval(1),
+      nextRetryAt: now.addingTimeInterval(Self.initialRetryDelaySec),
       lastError: "sequence_gap",
-      maxRetries: 5,
-      deadlineAt: now.addingTimeInterval(31)
+      maxRetries: Self.maxRetries,
+      deadlineAt: now.addingTimeInterval(Self.deadlineWindowSec)
     )
 
     if let index = state.eventGaps.firstIndex(where: { existing in
@@ -49,7 +54,7 @@ public enum GapManager {
   }
 
   public static func retryDelay(for failureCount: Int) -> TimeInterval {
-    let capped = min(failureCount, 5)
-    return min(pow(2.0, Double(capped)), 16.0)
+    let capped = min(failureCount, maxRetries)
+    return min(pow(2.0, Double(capped)), maxBackoffSec)
   }
 }

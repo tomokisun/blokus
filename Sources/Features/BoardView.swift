@@ -17,12 +17,11 @@ public struct BoardView: View {
     let previewCells = previewCellsAt(viewModel: viewModel)
 
     Grid(horizontalSpacing: 0, verticalSpacing: 0) {
-      ForEach(0..<20, id: \.self) { y in
+      ForEach(0..<BoardConstants.boardSize, id: \.self) { y in
         GridRow {
-          ForEach(0..<20, id: \.self) { x in
+          ForEach(0..<BoardConstants.boardSize, id: \.self) { x in
             let point = BoardPoint(x: x, y: y)
-            let boardIndex = y * 20 + x
-            let owner = state.board[boardIndex]
+            let owner = state.board[point]
             let isPreview = previewCells.contains(point)
             let isHighlight = highlightCells.contains(point)
 

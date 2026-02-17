@@ -19,7 +19,7 @@ public enum PlacementValidator {
     for variantCell in variant {
       let point = BoardPoint(x: variantCell.x + origin.x, y: variantCell.y + origin.y)
       if !point.isInsideBoard { return false }
-      if state.board[boardIndex(point)] != nil { return false }
+      if state.board[point] != nil { return false }
       absoluteCells.append(point)
     }
 
@@ -29,7 +29,7 @@ public enum PlacementValidator {
         cell.translated(1, 0),
         cell.translated(0, -1),
         cell.translated(0, 1)
-      ].compactMap { n in boardPointSafe(n).flatMap { state.board[boardIndex($0)] } }
+      ].compactMap { n in boardPointSafe(n).flatMap { state.board[$0] } }
         .contains(where: { $0 == playerId })
       if touchesOwnSide { return false }
     }
@@ -42,7 +42,7 @@ public enum PlacementValidator {
     let touchesOwnCorner = absoluteCells.contains { cell in
       return [cell.translated(-1, -1), cell.translated(1, -1), cell.translated(-1, 1), cell.translated(1, 1)]
         .compactMap(boardPointSafe)
-        .contains(where: { state.board[boardIndex($0)] == playerId })
+        .contains(where: { state.board[$0] == playerId })
     }
     return touchesOwnCorner
   }
@@ -53,8 +53,8 @@ public enum PlacementValidator {
     for pieceId in remaining {
       guard let piece = PieceLibrary.pieces.first(where: { $0.id == pieceId }) else { continue }
       for variantIndex in piece.variants.indices {
-        for y in 0..<20 {
-          for x in 0..<20 {
+        for y in 0..<BoardConstants.boardSize {
+          for x in 0..<BoardConstants.boardSize {
             if canPlace(pieceId: pieceId, variantId: variantIndex, origin: BoardPoint(x: x, y: y), playerId: playerId, state: state) {
               return true
             }
@@ -63,10 +63,6 @@ public enum PlacementValidator {
       }
     }
     return false
-  }
-
-  private static func boardIndex(_ point: BoardPoint) -> Int {
-    point.y * 20 + point.x
   }
 
   private static func boardPointSafe(_ point: BoardPoint) -> BoardPoint? {

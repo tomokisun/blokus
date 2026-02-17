@@ -15,7 +15,7 @@ public struct GameState: Codable, Hashable, Sendable {
   public var players: [Player]
   public var turnOrder: [PlayerID]
   public var activeIndex: Int
-  public var board: [PlayerID?]
+  public var board: Board
   public var remainingPieces: [PlayerID: Set<String>]
   public var consecutivePasses: Int
   public var expectedSeq: Int
@@ -49,7 +49,7 @@ public struct GameState: Codable, Hashable, Sendable {
     self.players = players.enumerated().map { index, playerId in
       Player(id: playerId, index: index, name: playerId.rawValue)
     }
-    self.board = Array(repeating: nil, count: 400)
+    self.board = Board()
     let allPieceIds = Set(PieceLibrary.pieces.map(\.id))
     self.remainingPieces = Dictionary(uniqueKeysWithValues: players.map { ($0, allPieceIds) })
     self.consecutivePasses = 0
@@ -68,27 +68,17 @@ public struct GameState: Codable, Hashable, Sendable {
     turnOrder[activeIndex]
   }
 
-  private func index(_ point: BoardPoint) -> Int {
-    point.y * 20 + point.x
-  }
-
   public func boardPoint(for index: Int) -> BoardPoint {
-    BoardPoint(x: index % 20, y: index / 20)
+    Board.boardPoint(for: index)
   }
 
   public func playerCorner(_ playerId: PlayerID) -> BoardPoint {
-    let cornersByPlayers: [BoardPoint] = [
-      BoardPoint(x: 0, y: 0),
-      BoardPoint(x: 19, y: 19),
-      BoardPoint(x: 19, y: 0),
-      BoardPoint(x: 0, y: 19)
-    ]
     guard let idx = turnOrder.firstIndex(of: playerId) else { return BoardPoint(x: 0, y: 0) }
-    return cornersByPlayers[idx % 4]
+    return BoardConstants.playerStartCorners[idx % 4]
   }
 
   public func hasPlacedPiece(for playerId: PlayerID) -> Bool {
-    return board.contains(where: { $0 == playerId })
+    board.contains(where: { $0 == playerId })
   }
 
   public func canPlace(pieceId: String, variantId: Int, origin: BoardPoint, playerId: PlayerID) -> Bool {
@@ -113,7 +103,7 @@ public struct GameState: Codable, Hashable, Sendable {
       guard let pieceVariant = piece.variants[safe: variantId] else { return .invalidPlacement }
       for point in pieceVariant {
         let boardPoint = BoardPoint(x: point.x + origin.x, y: point.y + origin.y)
-        board[index(boardPoint)] = playerId
+        board[boardPoint] = playerId
       }
       remainingPieces[playerId] = remaining.subtracting([pieceId])
       consecutivePasses = 0
@@ -151,7 +141,7 @@ public struct GameState: Codable, Hashable, Sendable {
   public func computeStateFingerprint() -> String {
     var writer = CanonicalWriter()
     for idx in board.indices {
-      let marker = board[idx].flatMap { turnOrder.firstIndex(of: $0).map { $0 + 1 } } ?? 0
+      let marker = board[idx].flatMap({ turnOrder.firstIndex(of: $0).map { $0 + 1 } }) ?? 0
       writer.appendUInt8(UInt8(marker))
     }
     writer.appendUInt32(UInt32(activeIndex))
