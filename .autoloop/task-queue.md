@@ -1,14 +1,3 @@
-## GameState.swift からルール検証ロジックを PlacementValidator に抽出する
-
-`Sources/Domain/GameState.swift`（230 LOC）が状態コンテナとBlokusルール検証（`canPlace`, `hasAnyLegalMove`）を兼任している。Single Responsibility Principle に違反。
-
-- `Sources/Domain/PlacementValidator.swift` を新規作成
-- `canPlace(pieceId:variantId:origin:playerId:)` ロジックを移動
-- `hasAnyLegalMove` ロジックを移動
-- `GameState` は純粋な状態コンテナとして残す
-- 既存の呼び出し元（Engine, Features）を新しい API に切り替える
-- ビルド確認・テストパスを確認する
-
 ## GameEngine.swift を責務ごとのサービスに分割する
 
 `Sources/Engine/GameEngine.swift`（341 LOC）が以下の責務を全て担っている:

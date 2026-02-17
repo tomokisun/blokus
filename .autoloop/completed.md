@@ -1,14 +1,11 @@
 ## 完了タスク
 
-### 2026-02-18: DomainTypes.swift を意味単位のファイルに分割
+### 2026-02-17: DomainTypes.swift 分割
+- DomainTypes.swift を Player.swift, BoardPoint.swift, Piece.swift, Commands.swift, Events.swift, GamePhase.swift, Coordination.swift に分割
+- ビルド・89テスト全パス
 
-`Sources/Domain/DomainTypes.swift`（381 LOC, 20型）を以下の7ファイルに分割:
-- `Player.swift` - PlayerID, GameID, Player
-- `BoardPoint.swift` - BoardPoint
-- `Piece.swift` - Piece, PieceVariantsCache, PieceLibrary
-- `Commands.swift` - CommandAction, GameCommand
-- `Events.swift` - MoveEventStatus, MoveEventSource, MoveEvent
-- `GamePhase.swift` - GamePhase, SubmitRejectReason, GameSubmitStatus
-- `Coordination.swift` - CoordinationAuthority, RepairContext, EventGap, StateHashChain, RecoveryResult
-
-結果: ビルド成功、89テスト全パス。Public API 変更なし。
+### 2026-02-18: PlacementValidator 抽出
+- GameState.swift からルール検証ロジック（canPlace, hasAnyLegalMove）を PlacementValidator.swift に抽出
+- GameState は PlacementValidator への委譲メソッドで後方互換性を維持
+- boardPointSafe を GameState から削除（PlacementValidator に移動）
+- ビルド・89テスト全パス
