@@ -5,6 +5,7 @@ import Foundation
 @main
 struct TrainerCLI {
   static func main() async {
+    setbuf(stdout, nil)
     do {
       let command = try parse(arguments: Array(CommandLine.arguments.dropFirst()))
       switch command {

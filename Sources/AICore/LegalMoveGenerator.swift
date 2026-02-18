@@ -42,33 +42,110 @@ public struct LegalMoveGenerator: Sendable {
       return [.pass]
     }
 
+    let board = state.board
+    let firstMove = !state.hasPlacedPiece(for: playerId)
     let center = Double(BoardConstants.maxBoardIndex) / 2.0
     var scoredMoves: [ScoredMove] = []
     scoredMoves.reserveCapacity(128)
 
-    for info in Self.orderedPieceInfos {
-      guard remaining.contains(info.id) else { continue }
-      for variantId in info.variants.indices {
-        for y in 0..<BoardConstants.boardSize {
-          for x in 0..<BoardConstants.boardSize {
-            let origin = BoardPoint(x: x, y: y)
-            guard state.canPlace(
-              pieceId: info.id,
-              variantId: variantId,
-              origin: origin,
-              playerId: playerId
-            ) else {
-              continue
-            }
+    if firstMove {
+      let startCorner = state.playerCorner(playerId)
 
-            let distance = abs(Double(x) - center) + abs(Double(y) - center)
+      for info in Self.orderedPieceInfos {
+        guard remaining.contains(info.id) else { continue }
+        for variantId in info.variants.indices {
+          let variant = info.variants[variantId]
+          var triedOrigins = Set<Int>()
+
+          for cell in variant {
+            let ox = startCorner.x - cell.x
+            let oy = startCorner.y - cell.y
+            let originKey = oy * BoardConstants.boardSize + ox
+            guard triedOrigins.insert(originKey).inserted else { continue }
+
+            guard Self.canPlaceFirstMove(
+              variant: variant, ox: ox, oy: oy, board: board
+            ) else { continue }
+
+            let distance = abs(Double(ox) - center) + abs(Double(oy) - center)
             let score = Double(info.cellCount) * 100 - distance
             scoredMoves.append(
               ScoredMove(
-                action: .place(pieceId: info.id, variantId: variantId, origin: origin),
+                action: .place(pieceId: info.id, variantId: variantId, origin: BoardPoint(x: ox, y: oy)),
                 score: score
               )
             )
+          }
+        }
+      }
+    } else {
+      // Build edge-adjacency and diagonal-anchor sets using flat indices for speed.
+      let size = BoardConstants.boardSize
+      let cellCount = BoardConstants.boardCellCount
+      var edgeOfOwned = Array(repeating: false, count: cellCount)
+      var anchorSet = Array(repeating: false, count: cellCount)
+      var anchors: [BoardPoint] = []
+
+      for idx in 0..<cellCount {
+        guard board.cells[idx] == playerId else { continue }
+        let px = idx % size
+        let py = idx / size
+
+        // Mark edge neighbors as forbidden.
+        if px > 0        { edgeOfOwned[idx - 1] = true }
+        if px < size - 1 { edgeOfOwned[idx + 1] = true }
+        if py > 0        { edgeOfOwned[idx - size] = true }
+        if py < size - 1 { edgeOfOwned[idx + size] = true }
+      }
+
+      for idx in 0..<cellCount {
+        guard board.cells[idx] == playerId else { continue }
+        let px = idx % size
+        let py = idx / size
+
+        // Diagonal neighbors are potential anchors.
+        let diags: [(Int, Int)] = [(px - 1, py - 1), (px + 1, py - 1), (px - 1, py + 1), (px + 1, py + 1)]
+        for (dx, dy) in diags {
+          guard dx >= 0, dx < size, dy >= 0, dy < size else { continue }
+          let di = dy * size + dx
+          if board.cells[di] == nil, !edgeOfOwned[di], !anchorSet[di] {
+            anchorSet[di] = true
+            anchors.append(BoardPoint(x: dx, y: dy))
+          }
+        }
+      }
+
+      if anchors.isEmpty {
+        return [.pass]
+      }
+
+      for info in Self.orderedPieceInfos {
+        guard remaining.contains(info.id) else { continue }
+        for variantId in info.variants.indices {
+          let variant = info.variants[variantId]
+          var triedOrigins = Set<Int>()
+
+          for anchor in anchors {
+            for cell in variant {
+              let ox = anchor.x - cell.x
+              let oy = anchor.y - cell.y
+              let originKey = oy * BoardConstants.boardSize + ox
+              guard triedOrigins.insert(originKey).inserted else { continue }
+
+              guard Self.canPlaceNonFirst(
+                variant: variant, ox: ox, oy: oy,
+                board: board, edgeOfOwned: edgeOfOwned
+              ) else { continue }
+
+              let distance = abs(Double(ox) - center) + abs(Double(oy) - center)
+              let score = Double(info.cellCount) * 100 - distance
+              scoredMoves.append(
+                ScoredMove(
+                  action: .place(pieceId: info.id, variantId: variantId, origin: BoardPoint(x: ox, y: oy)),
+                  score: score
+                )
+              )
+            }
           }
         }
       }
@@ -89,5 +166,36 @@ public struct LegalMoveGenerator: Sendable {
       return Array(scoredMoves.prefix(maxCount).map(\.action))
     }
     return scoredMoves.map(\.action)
+  }
+
+  // MARK: - Inline placement checks (avoids PieceLibrary linear scan)
+
+  private static func canPlaceFirstMove(
+    variant: [BoardPoint], ox: Int, oy: Int, board: Board
+  ) -> Bool {
+    for cell in variant {
+      let px = cell.x + ox
+      let py = cell.y + oy
+      guard px >= 0, px < BoardConstants.boardSize,
+            py >= 0, py < BoardConstants.boardSize else { return false }
+      if board.cells[py * BoardConstants.boardSize + px] != nil { return false }
+    }
+    return true
+  }
+
+  private static func canPlaceNonFirst(
+    variant: [BoardPoint], ox: Int, oy: Int,
+    board: Board, edgeOfOwned: [Bool]
+  ) -> Bool {
+    let size = BoardConstants.boardSize
+    for cell in variant {
+      let px = cell.x + ox
+      let py = cell.y + oy
+      guard px >= 0, px < size, py >= 0, py < size else { return false }
+      let idx = py * size + px
+      if board.cells[idx] != nil { return false }
+      if edgeOfOwned[idx] { return false }
+    }
+    return true
   }
 }

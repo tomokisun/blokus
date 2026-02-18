@@ -31,7 +31,7 @@ public struct HeuristicPolicyValuePredictor: PolicyValuePredicting {
   ) -> PolicyValuePrediction {
     PolicyValuePrediction(
       priors: buildPriors(for: legalMoves),
-      values: evaluatePlayers(state: state)
+      values: evaluatePlayers(state: state, activePlayerHasMove: legalMoves != [.pass])
     )
   }
 
@@ -59,7 +59,7 @@ public struct HeuristicPolicyValuePredictor: PolicyValuePredicting {
     return raw.mapValues { $0 / sum }
   }
 
-  private func evaluatePlayers(state: GameState) -> [PlayerID: Double] {
+  private func evaluatePlayers(state: GameState, activePlayerHasMove: Bool) -> [PlayerID: Double] {
     var occupiedCounts: [PlayerID: Int] = [:]
     occupiedCounts.reserveCapacity(state.turnOrder.count)
     for cell in state.board.cells {
@@ -80,7 +80,7 @@ public struct HeuristicPolicyValuePredictor: PolicyValuePredicting {
       )
 
       var score = occupied - remainingCells * 0.15
-      if player == state.activePlayerId, !state.hasAnyLegalMove(for: player) {
+      if player == state.activePlayerId, !activePlayerHasMove {
         score -= 5
       }
       raw[player] = score

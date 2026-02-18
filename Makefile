@@ -1,6 +1,6 @@
 BIN ?= ./.build/release/TrainerCLI
 
-RUN_TS ?= $(shell date +%Y%m%d-%H%M%S)
+RUN_TS := $(or $(RUN_TS),$(shell date +%Y%m%d-%H%M%S))
 RUN_ROOT ?= TrainingRuns/$(RUN_TS)
 MERGED_DIR ?= $(RUN_ROOT)/merged
 MODEL_PATH ?= Models/model-$(RUN_TS).json
