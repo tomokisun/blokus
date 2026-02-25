@@ -31,6 +31,7 @@ public struct GameState: Codable, Hashable, Sendable {
     gameId: GameID,
     players: [PlayerID],
     authorityId: PlayerID,
+    aiPlayerIds: Set<PlayerID> = [],
     now: Date = .init(),
     localAuthorityMode: Bool = true
   ) {
@@ -47,7 +48,7 @@ public struct GameState: Codable, Hashable, Sendable {
     self.turnOrder = players
     self.activeIndex = 0
     self.players = players.enumerated().map { index, playerId in
-      Player(id: playerId, index: index, name: playerId.rawValue)
+      Player(id: playerId, index: index, name: playerId.rawValue, isAI: aiPlayerIds.contains(playerId))
     }
     self.board = Board()
     let allPieceIds = Set(PieceLibrary.pieces.map(\.id))
@@ -66,6 +67,10 @@ public struct GameState: Codable, Hashable, Sendable {
 
   public var activePlayerId: PlayerID {
     turnOrder[activeIndex]
+  }
+
+  public var activePlayerIsAI: Bool {
+    players[activeIndex].isAI
   }
 
   public func boardPoint(for index: Int) -> BoardPoint {
@@ -96,7 +101,7 @@ public struct GameState: Codable, Hashable, Sendable {
       consecutivePasses += 1
 
     case let .place(pieceId: pieceId, variantId: variantId, origin: origin):
-      guard let piece = PieceLibrary.pieces.first(where: { $0.id == pieceId }) else { return .invalidPlacement }
+      guard let piece = PieceLibrary.pieceById[pieceId] else { return .invalidPlacement }
       let remaining = remainingPieces[playerId, default: []]
       guard remaining.contains(pieceId) else { return .invalidPlacement }
       guard canPlace(pieceId: pieceId, variantId: variantId, origin: origin, playerId: playerId) else { return .invalidPlacement }
@@ -109,6 +114,34 @@ public struct GameState: Codable, Hashable, Sendable {
       consecutivePasses = 0
     }
 
+    advanceTurn()
+    return nil
+  }
+
+  /// Apply without validation. For use in MCTS simulations where moves are already known to be legal.
+  public mutating func applyUnchecked(action: CommandAction, by playerId: PlayerID) {
+    switch action {
+    case .pass:
+      consecutivePasses += 1
+
+    case let .place(pieceId: pieceId, variantId: variantId, origin: origin):
+      guard let piece = PieceLibrary.pieceById[pieceId],
+            let pieceVariant = piece.variants[safe: variantId] else { return }
+      for point in pieceVariant {
+        let boardPoint = BoardPoint(x: point.x + origin.x, y: point.y + origin.y)
+        board[boardPoint] = playerId
+      }
+      remainingPieces[playerId] = remainingPieces[playerId, default: []].subtracting([pieceId])
+      consecutivePasses = 0
+    }
+
+    activeIndex = (activeIndex + 1) % max(1, turnOrder.count)
+    if consecutivePasses >= turnOrder.count {
+      phase = .finished
+    }
+  }
+
+  private mutating func advanceTurn() {
     activeIndex = (activeIndex + 1) % max(1, turnOrder.count)
     if consecutivePasses >= turnOrder.count {
       phase = .finished
@@ -116,7 +149,6 @@ public struct GameState: Codable, Hashable, Sendable {
     expectedSeq += 1
     coordinationSeq += 1
     stateFingerprint = computeStateFingerprint()
-    return nil
   }
 
   public mutating func beginRepair(_ now: Date) {

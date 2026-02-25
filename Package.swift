@@ -42,6 +42,7 @@ let package = Package(
     .target(
       name: "Features",
       dependencies: [
+        "AICore",
         "DesignSystem",
         "Engine",
         "Persistence",

@@ -20,4 +20,10 @@ extension RandomNumberGenerator {
   mutating func nextUnitDouble() -> Double {
     Double(next() >> 11) / Double(1 << 53)
   }
+
+  mutating func nextGaussian() -> Double {
+    let u1 = max(1e-10, nextUnitDouble())
+    let u2 = nextUnitDouble()
+    return sqrt(-2.0 * log(u1)) * cos(2.0 * .pi * u2)
+  }
 }

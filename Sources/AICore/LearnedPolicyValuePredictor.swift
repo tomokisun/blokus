@@ -18,12 +18,13 @@ public struct LearnedPolicyValuePredictor: PolicyValuePredicting {
     legalMoves: [CommandAction]
   ) -> PolicyValuePrediction {
     let fallback = fallbackPredictor.predict(state: state, legalMoves: legalMoves)
-    let priors = buildPriors(legalMoves: legalMoves, fallbackPriors: fallback.priors)
+    let priors = buildPriors(state: state, legalMoves: legalMoves, fallbackPriors: fallback.priors)
     let values = buildValues(state: state, fallbackValues: fallback.values)
     return PolicyValuePrediction(priors: priors, values: values)
   }
 
   private func buildPriors(
+    state: GameState,
     legalMoves: [CommandAction],
     fallbackPriors: [CommandAction: Double]
   ) -> [CommandAction: Double] {
@@ -32,6 +33,53 @@ public struct LearnedPolicyValuePredictor: PolicyValuePredicting {
     let blend = max(0, min(1, model.policyBlend))
     let fallbackWeight = 1 - blend
 
+    if let policyWeights = model.policyMLPWeights {
+      return buildMLPPriors(
+        state: state, legalMoves: legalMoves,
+        policyWeights: policyWeights, blend: blend,
+        fallbackWeight: fallbackWeight, fallbackPriors: fallbackPriors
+      )
+    }
+
+    return buildTablePriors(
+      legalMoves: legalMoves, blend: blend,
+      fallbackWeight: fallbackWeight, fallbackPriors: fallbackPriors
+    )
+  }
+
+  private func buildMLPPriors(
+    state: GameState,
+    legalMoves: [CommandAction],
+    policyWeights: MLPWeights,
+    blend: Double,
+    fallbackWeight: Double,
+    fallbackPriors: [CommandAction: Double]
+  ) -> [CommandAction: Double] {
+    let context = BoardContext(state: state)
+
+    var logits: [CommandAction: Double] = [:]
+    logits.reserveCapacity(legalMoves.count)
+
+    for action in legalMoves {
+      let fallbackPrior = max(1e-9, fallbackPriors[action] ?? (1.0 / Double(legalMoves.count)))
+      let fallbackLogit = log(fallbackPrior)
+      let features = MoveFeatureExtractor.extractMoveFeatures(action: action, context: context)
+      let learnedLogit = MLPInference.predictRaw(input: features, weights: policyWeights)
+      logits[action] = fallbackWeight * fallbackLogit + blend * learnedLogit
+    }
+
+    let stabilized = logits.values.max() ?? 0
+    let expValues = logits.mapValues { exp($0 - stabilized) }
+    let sumExp = max(1e-9, expValues.values.reduce(0, +))
+    return expValues.mapValues { $0 / sumExp }
+  }
+
+  private func buildTablePriors(
+    legalMoves: [CommandAction],
+    blend: Double,
+    fallbackWeight: Double,
+    fallbackPriors: [CommandAction: Double]
+  ) -> [CommandAction: Double] {
     var logits: [CommandAction: Double] = [:]
     logits.reserveCapacity(legalMoves.count)
 
@@ -64,6 +112,34 @@ public struct LearnedPolicyValuePredictor: PolicyValuePredicting {
     let blend = max(0, min(1, model.valueBlend))
     let fallbackWeight = 1 - blend
 
+    let arch = model.resolvedArchitecture
+
+    if arch == "mlp", let mlpW = model.mlpWeights {
+      return buildMLPValues(
+        state: state, mlpWeights: mlpW, blend: blend,
+        fallbackWeight: fallbackWeight, fallbackValues: fallbackValues
+      )
+    }
+
+    if arch == "cnn", let cnnW = model.cnnWeights {
+      return buildCNNValues(
+        state: state, cnnWeights: cnnW, blend: blend,
+        fallbackWeight: fallbackWeight, fallbackValues: fallbackValues
+      )
+    }
+
+    return buildLinearValues(
+      state: state, blend: blend,
+      fallbackWeight: fallbackWeight, fallbackValues: fallbackValues
+    )
+  }
+
+  private func buildLinearValues(
+    state: GameState,
+    blend: Double,
+    fallbackWeight: Double,
+    fallbackValues: [PlayerID: Double]
+  ) -> [PlayerID: Double] {
     let counts = boardCounts(for: state)
     let totalCells = Double(max(1, BoardConstants.boardCellCount))
     let filledCells = counts.values.reduce(0, +)
@@ -91,10 +167,64 @@ public struct LearnedPolicyValuePredictor: PolicyValuePredicting {
     return values
   }
 
+  private func buildMLPValues(
+    state: GameState,
+    mlpWeights: MLPWeights,
+    blend: Double,
+    fallbackWeight: Double,
+    fallbackValues: [PlayerID: Double]
+  ) -> [PlayerID: Double] {
+    var values: [PlayerID: Double] = [:]
+    values.reserveCapacity(state.turnOrder.count)
+
+    let encoding = TrainingEncoding.encodeBoard(state)
+    for player in state.turnOrder {
+      let playerIdx = state.turnOrder.firstIndex(of: player) ?? 0
+      let features = BoardFeatureExtractor.extract(
+        boardEncoding: encoding,
+        activePlayerIndex: playerIdx,
+        playerCount: state.turnOrder.count
+      )
+      let learned = MLPInference.predict(input: features, weights: mlpWeights)
+      let fallback = fallbackValues[player, default: 0]
+      let mixed = fallbackWeight * fallback + blend * learned
+      values[player] = max(-1, min(1, mixed))
+    }
+
+    return values
+  }
+
+  private func buildCNNValues(
+    state: GameState,
+    cnnWeights: CNNWeights,
+    blend: Double,
+    fallbackWeight: Double,
+    fallbackValues: [PlayerID: Double]
+  ) -> [PlayerID: Double] {
+    var values: [PlayerID: Double] = [:]
+    values.reserveCapacity(state.turnOrder.count)
+
+    for player in state.turnOrder {
+      let playerIdx = state.turnOrder.firstIndex(of: player) ?? 0
+      let encoding = TrainingEncoding.encodeBoard(state)
+      let channels = BoardFeatureExtractor.buildCNNInput(
+        boardEncoding: encoding,
+        activePlayerIndex: playerIdx,
+        playerCount: state.turnOrder.count
+      )
+      let learned = CNNInference.predict(boardChannels: channels, weights: cnnWeights)
+      let fallback = fallbackValues[player, default: 0]
+      let mixed = fallbackWeight * fallback + blend * learned
+      values[player] = max(-1, min(1, mixed))
+    }
+
+    return values
+  }
+
   private func boardCounts(for state: GameState) -> [PlayerID: Int] {
     var result: [PlayerID: Int] = Dictionary(uniqueKeysWithValues: state.turnOrder.map { ($0, 0) })
-    for cell in state.board.cells {
-      guard let owner = cell else { continue }
+    for raw in state.board.rawCells {
+      guard raw != 0, let owner = PlayerID.from(compactIndex: raw) else { continue }
       result[owner, default: 0] += 1
     }
     return result

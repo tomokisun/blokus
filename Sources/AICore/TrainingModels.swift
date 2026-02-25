@@ -8,6 +8,7 @@ public struct SelfPlayConfiguration: Codable, Hashable, Sendable {
   public var parallelism: Int
   public var baseSeed: UInt64
   public var mcts: MCTSConfiguration
+  public var temperatureDropPly: Int
 
   public init(
     games: Int,
@@ -15,7 +16,8 @@ public struct SelfPlayConfiguration: Codable, Hashable, Sendable {
     maxTurns: Int,
     parallelism: Int,
     baseSeed: UInt64,
-    mcts: MCTSConfiguration
+    mcts: MCTSConfiguration,
+    temperatureDropPly: Int = 0
   ) {
     self.games = games
     self.players = players
@@ -23,6 +25,7 @@ public struct SelfPlayConfiguration: Codable, Hashable, Sendable {
     self.parallelism = parallelism
     self.baseSeed = baseSeed
     self.mcts = mcts
+    self.temperatureDropPly = temperatureDropPly
   }
 }
 

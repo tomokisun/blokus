@@ -24,15 +24,18 @@ public struct MCTSDecision: Sendable {
   public var selectedAction: CommandAction
   public var policy: [MovePolicyEntry]
   public var rootValues: [PlayerValue]
+  public var rootLegalMoves: [CommandAction]
 
   public init(
     selectedAction: CommandAction,
     policy: [MovePolicyEntry],
-    rootValues: [PlayerValue]
+    rootValues: [PlayerValue],
+    rootLegalMoves: [CommandAction] = []
   ) {
     self.selectedAction = selectedAction
     self.policy = policy
     self.rootValues = rootValues
+    self.rootLegalMoves = rootLegalMoves
   }
 }
 
@@ -88,7 +91,8 @@ public struct MCTSAgent<Model: PolicyValuePredicting>: Sendable {
       return MCTSDecision(
         selectedAction: .pass,
         policy: [MovePolicyEntry(action: .pass, probability: 1)],
-        rootValues: state.turnOrder.map { PlayerValue(playerId: $0, value: 0) }
+        rootValues: state.turnOrder.map { PlayerValue(playerId: $0, value: 0) },
+        rootLegalMoves: [.pass]
       )
     }
 
@@ -118,10 +122,7 @@ public struct MCTSAgent<Model: PolicyValuePredicting>: Sendable {
         }
 
         let currentPlayer = simulationState.activePlayerId
-        guard simulationState.apply(action: selectedAction, by: currentPlayer) == nil else {
-          leafValues = terminalValues(for: simulationState)
-          break
-        }
+        simulationState.applyUnchecked(action: selectedAction, by: currentPlayer)
 
         if let child = node.children[selectedAction] {
           node = child
@@ -173,7 +174,8 @@ public struct MCTSAgent<Model: PolicyValuePredicting>: Sendable {
     return MCTSDecision(
       selectedAction: selectedAction,
       policy: policy,
-      rootValues: rootValues
+      rootValues: rootValues,
+      rootLegalMoves: rootLegal
     )
   }
 
@@ -307,8 +309,8 @@ public struct MCTSAgent<Model: PolicyValuePredicting>: Sendable {
   private func terminalValues(for state: GameState) -> [PlayerID: Double] {
     var counts: [PlayerID: Int] = [:]
     counts.reserveCapacity(state.turnOrder.count)
-    for cell in state.board.cells {
-      guard let owner = cell else { continue }
+    for raw in state.board.rawCells {
+      guard raw != 0, let owner = PlayerID.from(compactIndex: raw) else { continue }
       counts[owner, default: 0] += 1
     }
 

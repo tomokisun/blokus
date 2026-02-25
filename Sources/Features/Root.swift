@@ -1,4 +1,6 @@
 import ComposableArchitecture
+import Domain
+import Foundation
 
 @Reducer
 public struct Root {
@@ -30,8 +32,16 @@ public struct Root {
 
     Reduce { state, action in
       switch action {
-      case let .newGame(.delegate(.startGame(showHighlight))):
-        state.game = Game.State(showHighlight: showHighlight)
+      case let .newGame(.delegate(.startGame(showHighlight, aiPlayerCount))):
+        let allPlayers = PlayerID.allCases
+        let aiIds: Set<PlayerID> = Set(allPlayers.suffix(aiPlayerCount))
+        let gameState = GameState(
+          gameId: UUID().uuidString,
+          players: allPlayers,
+          authorityId: .blue,
+          aiPlayerIds: aiIds
+        )
+        state.game = Game.State(gameState: gameState, showHighlight: showHighlight)
         return .none
 
       case .game(.delegate(.backToMenu)):

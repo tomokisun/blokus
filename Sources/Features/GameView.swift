@@ -44,7 +44,8 @@ public struct GameView: View {
       VStack(spacing: 12) {
         Picker(selection: .constant(store.activePlayerIndex)) {
           ForEach(Array(store.scores.enumerated()), id: \.offset) { index, entry in
-            Text("\(entry.playerId.displayName): \(entry.score)pt")
+            let isAI = store.gameState.players[index].isAI
+            Text("\(entry.playerId.displayName)\(isAI ? " (AI)" : ""): \(entry.score)pt")
               .tag(index)
           }
         } label: {
@@ -53,13 +54,21 @@ public struct GameView: View {
         .pickerStyle(.segmented)
         .padding(.horizontal, 20)
 
+        if store.isAIThinking {
+          HStack(spacing: 8) {
+            ProgressView()
+            Text("\(store.gameState.activePlayerId.displayName) is thinking...")
+              .foregroundStyle(.secondary)
+          }
+        }
+
         HStack(spacing: 40) {
           Button {
             store.send(.rotateButtonTapped)
           } label: {
             Label("Rotate", systemImage: "rotate.left")
           }
-          .disabled(store.selectedPieceId == nil)
+          .disabled(store.selectedPieceId == nil || store.isActivePlayerAI)
 
           Button("New Game") {
             store.send(.newGameButtonTapped)
@@ -70,7 +79,7 @@ public struct GameView: View {
           } label: {
             Label("Flip", systemImage: "trapezoid.and.line.vertical")
           }
-          .disabled(store.selectedPieceId == nil)
+          .disabled(store.selectedPieceId == nil || store.isActivePlayerAI)
         }
       }
 
@@ -100,7 +109,7 @@ public struct GameView: View {
               )
               .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .disabled(store.isGameOver)
+            .disabled(store.isGameOver || store.isActivePlayerAI)
           }
         }
         .padding(.horizontal, 20)
@@ -112,11 +121,16 @@ public struct GameView: View {
             .frame(height: cellSize * 3)
             .frame(maxWidth: .infinity)
         }
-        .disabled(!store.canPass || store.isGameOver)
+        .disabled(!store.canPass || store.isGameOver || store.isActivePlayerAI)
         .padding(.horizontal, 20)
       }
       .sensoryFeedback(.impact, trigger: store.selectedPieceId)
       .sensoryFeedback(.impact, trigger: store.activePlayerIndex)
+    }
+    .onAppear {
+      if store.isActivePlayerAI && !store.isGameOver {
+        store.send(.triggerAITurn)
+      }
     }
   }
 }

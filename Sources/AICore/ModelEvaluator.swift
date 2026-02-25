@@ -212,12 +212,6 @@ public struct ModelEvaluator: Sendable {
     while engine.state.phase != .finished, turns < configuration.maxTurns {
       let snapshot = engine.state
       let active = snapshot.activePlayerId
-      let legalMoves = moveGenerator.legalMoves(
-        for: snapshot,
-        playerId: active,
-        maxCount: max(1, configuration.mcts.maxCandidateMoves)
-      )
-
       let useA = controllerByPlayer[active, default: true]
       let decision = useA
         ? agentA.decide(state: snapshot, rng: &rng)
@@ -225,7 +219,7 @@ public struct ModelEvaluator: Sendable {
 
       let action = sanitize(
         selected: decision.selectedAction,
-        legalMoves: legalMoves,
+        legalMoves: decision.rootLegalMoves,
         fallbackPolicy: decision.policy
       )
 

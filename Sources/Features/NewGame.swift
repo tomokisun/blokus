@@ -5,9 +5,11 @@ public struct NewGame {
   @ObservableState
   public struct State: Equatable {
     public var showHighlight: Bool
+    public var aiPlayerCount: Int
 
-    public init(showHighlight: Bool = true) {
+    public init(showHighlight: Bool = true, aiPlayerCount: Int = 3) {
       self.showHighlight = showHighlight
+      self.aiPlayerCount = aiPlayerCount
     }
   }
 
@@ -17,7 +19,7 @@ public struct NewGame {
     case delegate(Delegate)
 
     public enum Delegate {
-      case startGame(showHighlight: Bool)
+      case startGame(showHighlight: Bool, aiPlayerCount: Int)
     }
   }
 
@@ -31,7 +33,10 @@ public struct NewGame {
         return .none
 
       case .startGameButtonTapped:
-        return .send(.delegate(.startGame(showHighlight: state.showHighlight)))
+        return .send(.delegate(.startGame(
+          showHighlight: state.showHighlight,
+          aiPlayerCount: state.aiPlayerCount
+        )))
 
       case .delegate:
         return .none

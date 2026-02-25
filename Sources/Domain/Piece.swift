@@ -59,6 +59,11 @@ private final class PieceVariantsCache: @unchecked Sendable {
 
 public enum PieceLibrary {
   public static let currentVersion = 5
+
+  public static let pieceById: [String: Piece] = {
+    Dictionary(uniqueKeysWithValues: pieces.map { ($0.id, $0) })
+  }()
+
   public static let pieces: [Piece] = [
     Piece(id: "mono-1", baseCells: [BoardPoint(x: 0, y: 0)]),
     Piece(id: "domino-2", baseCells: [BoardPoint(x: 0, y: 0), BoardPoint(x: 1, y: 0)]),

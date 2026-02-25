@@ -43,7 +43,8 @@ public struct LegalMoveGenerator: Sendable {
     }
 
     let board = state.board
-    let firstMove = !state.hasPlacedPiece(for: playerId)
+    let playerTag = playerId.compactIndex
+    let firstMove = !board.rawCells.contains(playerTag)
     let center = Double(BoardConstants.maxBoardIndex) / 2.0
     var scoredMoves: [ScoredMove] = []
     scoredMoves.reserveCapacity(128)
@@ -86,12 +87,12 @@ public struct LegalMoveGenerator: Sendable {
       var anchorSet = Array(repeating: false, count: cellCount)
       var anchors: [BoardPoint] = []
 
+      let raw = board.rawCells
       for idx in 0..<cellCount {
-        guard board.cells[idx] == playerId else { continue }
+        guard raw[idx] == playerTag else { continue }
         let px = idx % size
         let py = idx / size
 
-        // Mark edge neighbors as forbidden.
         if px > 0        { edgeOfOwned[idx - 1] = true }
         if px < size - 1 { edgeOfOwned[idx + 1] = true }
         if py > 0        { edgeOfOwned[idx - size] = true }
@@ -99,16 +100,15 @@ public struct LegalMoveGenerator: Sendable {
       }
 
       for idx in 0..<cellCount {
-        guard board.cells[idx] == playerId else { continue }
+        guard raw[idx] == playerTag else { continue }
         let px = idx % size
         let py = idx / size
 
-        // Diagonal neighbors are potential anchors.
         let diags: [(Int, Int)] = [(px - 1, py - 1), (px + 1, py - 1), (px - 1, py + 1), (px + 1, py + 1)]
         for (dx, dy) in diags {
           guard dx >= 0, dx < size, dy >= 0, dy < size else { continue }
           let di = dy * size + dx
-          if board.cells[di] == nil, !edgeOfOwned[di], !anchorSet[di] {
+          if raw[di] == 0, !edgeOfOwned[di], !anchorSet[di] {
             anchorSet[di] = true
             anchors.append(BoardPoint(x: dx, y: dy))
           }
@@ -178,7 +178,7 @@ public struct LegalMoveGenerator: Sendable {
       let py = cell.y + oy
       guard px >= 0, px < BoardConstants.boardSize,
             py >= 0, py < BoardConstants.boardSize else { return false }
-      if board.cells[py * BoardConstants.boardSize + px] != nil { return false }
+      if board.rawCells[py * BoardConstants.boardSize + px] != 0 { return false }
     }
     return true
   }
@@ -193,7 +193,7 @@ public struct LegalMoveGenerator: Sendable {
       let py = cell.y + oy
       guard px >= 0, px < size, py >= 0, py < size else { return false }
       let idx = py * size + px
-      if board.cells[idx] != nil { return false }
+      if board.rawCells[idx] != 0 { return false }
       if edgeOfOwned[idx] { return false }
     }
     return true

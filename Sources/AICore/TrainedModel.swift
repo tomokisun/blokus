@@ -49,7 +49,7 @@ public struct ModelTrainingMetrics: Codable, Hashable, Sendable {
 }
 
 public struct TrainedPolicyValueModel: Codable, Hashable, Sendable {
-  public static let formatVersion = 1
+  public static let currentFormatVersion = 3
 
   public var formatVersion: Int
   public var createdAt: Date
@@ -62,8 +62,20 @@ public struct TrainedPolicyValueModel: Codable, Hashable, Sendable {
   public var valueModel: LinearValueModel
   public var metrics: ModelTrainingMetrics
 
+  // v2: neural network value weights (optional for backward compat)
+  public var architecture: String?
+  public var mlpWeights: MLPWeights?
+  public var cnnWeights: CNNWeights?
+
+  // v3: policy MLP weights (optional for backward compat)
+  public var policyMLPWeights: MLPWeights?
+
+  public var resolvedArchitecture: String {
+    architecture ?? "linear"
+  }
+
   public init(
-    formatVersion: Int = TrainedPolicyValueModel.formatVersion,
+    formatVersion: Int = TrainedPolicyValueModel.currentFormatVersion,
     createdAt: Date,
     label: String,
     policyBlend: Double,
@@ -72,7 +84,11 @@ public struct TrainedPolicyValueModel: Codable, Hashable, Sendable {
     actionBiasByKey: [String: Double],
     pieceBiasById: [String: Double],
     valueModel: LinearValueModel,
-    metrics: ModelTrainingMetrics
+    metrics: ModelTrainingMetrics,
+    architecture: String? = nil,
+    mlpWeights: MLPWeights? = nil,
+    cnnWeights: CNNWeights? = nil,
+    policyMLPWeights: MLPWeights? = nil
   ) {
     self.formatVersion = formatVersion
     self.createdAt = createdAt
@@ -84,6 +100,10 @@ public struct TrainedPolicyValueModel: Codable, Hashable, Sendable {
     self.pieceBiasById = pieceBiasById
     self.valueModel = valueModel
     self.metrics = metrics
+    self.architecture = architecture
+    self.mlpWeights = mlpWeights
+    self.policyMLPWeights = policyMLPWeights
+    self.cnnWeights = cnnWeights
   }
 }
 
@@ -94,6 +114,12 @@ public struct TrainerConfiguration: Hashable, Sendable {
   public var selectedActionBoost: Double
   public var maxActionBiasCount: Int
   public var ridgeLambda: Double
+  public var architecture: String
+  public var policyArchitecture: String
+  public var epochs: Int
+  public var learningRate: Double
+  public var batchSize: Int
+  public var augment: Bool
 
   public init(
     label: String,
@@ -101,7 +127,13 @@ public struct TrainerConfiguration: Hashable, Sendable {
     valueBlend: Double = 0.7,
     selectedActionBoost: Double = 1.0,
     maxActionBiasCount: Int = 40000,
-    ridgeLambda: Double = 1e-3
+    ridgeLambda: Double = 1e-3,
+    architecture: String = "linear",
+    policyArchitecture: String = "table",
+    epochs: Int = 20,
+    learningRate: Double = 0.001,
+    batchSize: Int = 256,
+    augment: Bool = false
   ) {
     self.label = label
     self.policyBlend = max(0, min(1, policyBlend))
@@ -109,6 +141,12 @@ public struct TrainerConfiguration: Hashable, Sendable {
     self.selectedActionBoost = max(0, selectedActionBoost)
     self.maxActionBiasCount = max(1, maxActionBiasCount)
     self.ridgeLambda = max(0, ridgeLambda)
+    self.architecture = architecture
+    self.policyArchitecture = policyArchitecture
+    self.epochs = max(1, epochs)
+    self.learningRate = max(1e-6, learningRate)
+    self.batchSize = max(1, batchSize)
+    self.augment = augment
   }
 }
 
@@ -251,7 +289,8 @@ public enum TrainedModelIO {
 public enum PolicyValueModelTrainer {
   public static func train(
     positions: [TrainingPosition],
-    configuration: TrainerConfiguration
+    configuration: TrainerConfiguration,
+    progress: ((String) -> Void)? = nil
   ) -> ModelTrainingResult {
     guard !positions.isEmpty else {
       let emptyModel = TrainedPolicyValueModel(
@@ -281,6 +320,7 @@ public enum PolicyValueModelTrainer {
       return ModelTrainingResult(model: emptyModel)
     }
 
+    // Policy bias tables: use original positions only (no augmentation needed)
     var actionMass: [String: Double] = [:]
     var pieceMass: [String: Double] = [:]
     var selectedCountByAction: [String: Double] = [:]
@@ -349,13 +389,165 @@ public enum PolicyValueModelTrainer {
       playerBiasById: playerBiasById
     )
 
-    let mse = computeValueMSE(positions: positions, valueModel: valueModel)
+    // NN training: extract features/targets, then augment inline (memory-efficient)
+    var mlpWeightsResult: MLPWeights? = nil
+    var cnnWeightsResult: CNNWeights? = nil
+    var valueMSE = computeValueMSE(positions: positions, valueModel: valueModel)
+    let augmentTransforms = configuration.augment ? BoardTransform.allCases : [BoardTransform.identity]
+    let nnPositionCount = positions.count * augmentTransforms.count
+
+    if configuration.architecture == "mlp" {
+      progress?("extracting features for MLP (augment=\(configuration.augment), \(nnPositionCount) effective positions)...")
+      var features: [[Double]] = []
+      var targets: [Double] = []
+      features.reserveCapacity(nnPositionCount)
+      targets.reserveCapacity(nnPositionCount)
+
+      for position in positions {
+        let activeTarget = position.outcomeByPlayer.first { $0.playerId == position.activePlayer }?.value ?? 0
+        let activeIdx = PlayerID.allCases.firstIndex(of: position.activePlayer) ?? 0
+        for t in augmentTransforms {
+          let board = (t == .identity) ? position.boardEncoding : DataAugmentation.transformBoard(position.boardEncoding, transform: t)
+          features.append(BoardFeatureExtractor.extract(boardEncoding: board, activePlayerIndex: activeIdx))
+          targets.append(activeTarget)
+        }
+      }
+
+      progress?("training MLP (epochs=\(configuration.epochs), lr=\(configuration.learningRate), positions=\(features.count))...")
+      mlpWeightsResult = MLPTrainer.train(
+        features: features,
+        targets: targets,
+        hiddenSizes: [64, 32],
+        epochs: configuration.epochs,
+        learningRate: configuration.learningRate,
+        batchSize: configuration.batchSize,
+        seed: 42,
+        progress: { epoch, loss in
+          progress?("  [mlp] epoch \(epoch): loss=\(String(format: "%.6f", loss))")
+        }
+      )
+
+      if let mlpW = mlpWeightsResult {
+        var mlpMSE = 0.0
+        let evalCount = min(features.count, positions.count)
+        for i in 0..<evalCount {
+          let pred = MLPInference.predict(input: features[i], weights: mlpW)
+          let diff = pred - targets[i]
+          mlpMSE += diff * diff
+        }
+        valueMSE = mlpMSE / Double(max(1, evalCount))
+        progress?("  [mlp] final mse=\(String(format: "%.6f", valueMSE))")
+      }
+    } else if configuration.architecture == "cnn" {
+      progress?("building CNN inputs (augment=\(configuration.augment), \(nnPositionCount) effective positions)...")
+      var boards: [[Double]] = []
+      var targets: [Double] = []
+      boards.reserveCapacity(nnPositionCount)
+      targets.reserveCapacity(nnPositionCount)
+
+      for position in positions {
+        let activeTarget = position.outcomeByPlayer.first { $0.playerId == position.activePlayer }?.value ?? 0
+        let activeIdx = PlayerID.allCases.firstIndex(of: position.activePlayer) ?? 0
+        for t in augmentTransforms {
+          let board = (t == .identity) ? position.boardEncoding : DataAugmentation.transformBoard(position.boardEncoding, transform: t)
+          boards.append(BoardFeatureExtractor.buildCNNInput(boardEncoding: board, activePlayerIndex: activeIdx))
+          targets.append(activeTarget)
+        }
+      }
+
+      progress?("training CNN (epochs=\(configuration.epochs), lr=\(configuration.learningRate), positions=\(boards.count))...")
+      cnnWeightsResult = CNNTrainer.train(
+        boards: boards,
+        targets: targets,
+        convChannelsList: [8, 8],
+        denseHidden: [32],
+        boardSize: BoardConstants.boardSize,
+        inputChannels: 4,
+        epochs: configuration.epochs,
+        learningRate: configuration.learningRate,
+        batchSize: configuration.batchSize,
+        seed: 42,
+        progress: { epoch, loss in
+          progress?("  [cnn] epoch \(epoch): loss=\(String(format: "%.6f", loss))")
+        }
+      )
+
+      if let cnnW = cnnWeightsResult {
+        var cnnMSE = 0.0
+        let evalCount = min(boards.count, positions.count)
+        for i in 0..<evalCount {
+          let pred = CNNInference.predict(boardChannels: boards[i], weights: cnnW)
+          let diff = pred - targets[i]
+          cnnMSE += diff * diff
+        }
+        valueMSE = cnnMSE / Double(max(1, evalCount))
+        progress?("  [cnn] final mse=\(String(format: "%.6f", valueMSE))")
+      }
+    }
+
+    // Policy MLP training
+    var policyMLPResult: MLPWeights? = nil
+    if configuration.policyArchitecture == "mlp" {
+      progress?("building policy MLP training samples...")
+      var policySamples: [PolicyMLPTrainer.PolicySample] = []
+      policySamples.reserveCapacity(positions.count)
+
+      for position in positions {
+        let validEntries = position.policy.filter { $0.probability > 1e-9 }
+        guard validEntries.count > 1 else { continue }
+
+        let activeTag: UInt8 = {
+          let players = position.outcomeByPlayer.map(\.playerId)
+          let idx = players.firstIndex(of: position.activePlayer) ?? 0
+          return UInt8(idx + 1)
+        }()
+        let context = BoardContext(
+          boardEncoding: position.boardEncoding,
+          activePlayerTag: activeTag,
+          playerCount: position.outcomeByPlayer.count
+        )
+
+        var moveFeatures: [[Double]] = []
+        var targetProbs: [Double] = []
+        moveFeatures.reserveCapacity(validEntries.count)
+        targetProbs.reserveCapacity(validEntries.count)
+
+        for entry in validEntries {
+          moveFeatures.append(
+            MoveFeatureExtractor.extractMoveFeatures(action: entry.action, context: context))
+          targetProbs.append(entry.probability)
+        }
+
+        // Re-normalize after filtering
+        let sum = max(1e-9, targetProbs.reduce(0, +))
+        for i in 0..<targetProbs.count { targetProbs[i] /= sum }
+
+        policySamples.append(
+          PolicyMLPTrainer.PolicySample(moveFeatures: moveFeatures, targetProbs: targetProbs))
+      }
+
+      progress?(
+        "training policy MLP (samples=\(policySamples.count), epochs=\(configuration.epochs))...")
+      policyMLPResult = PolicyMLPTrainer.train(
+        samples: policySamples,
+        hiddenSizes: [32, 16],
+        epochs: configuration.epochs,
+        learningRate: configuration.learningRate,
+        batchSize: configuration.batchSize,
+        seed: 42,
+        progress: { epoch, loss in
+          progress?("  [policy-mlp] epoch \(epoch): loss=\(String(format: "%.4f", loss))")
+        }
+      )
+      progress?("  [policy-mlp] training complete")
+    }
+
     let metrics = ModelTrainingMetrics(
-      positionCount: positions.count,
+      positionCount: nnPositionCount,
       uniqueActionCount: actionMass.count,
       storedActionBiasCount: actionBiasByKey.count,
       uniquePieceCount: pieceBiasById.count,
-      valueMSE: mse,
+      valueMSE: valueMSE,
       averageTarget: targetCount > 0 ? targetSum / Double(targetCount) : 0
     )
 
@@ -368,7 +560,11 @@ public enum PolicyValueModelTrainer {
       actionBiasByKey: actionBiasByKey,
       pieceBiasById: pieceBiasById,
       valueModel: valueModel,
-      metrics: metrics
+      metrics: metrics,
+      architecture: configuration.architecture == "linear" ? nil : configuration.architecture,
+      mlpWeights: mlpWeightsResult,
+      cnnWeights: cnnWeightsResult,
+      policyMLPWeights: policyMLPResult
     )
 
     return ModelTrainingResult(model: model)

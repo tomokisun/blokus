@@ -8,7 +8,7 @@ public enum PlacementValidator {
     playerId: PlayerID,
     state: GameState
   ) -> Bool {
-    guard let piece = PieceLibrary.pieces.first(where: { $0.id == pieceId }) else { return false }
+    guard let piece = PieceLibrary.pieceById[pieceId] else { return false }
     let available = state.remainingPieces[playerId, default: []]
     guard available.contains(pieceId) else { return false }
     let variants = piece.variants
@@ -51,12 +51,13 @@ public enum PlacementValidator {
     guard let remaining = state.remainingPieces[playerId], !remaining.isEmpty else { return false }
 
     let board = state.board
-    let firstMove = !state.hasPlacedPiece(for: playerId)
+    let playerTag = playerId.compactIndex
+    let firstMove = !board.rawCells.contains(playerTag)
 
     if firstMove {
       let startCorner = state.playerCorner(playerId)
       for pieceId in remaining {
-        guard let piece = PieceLibrary.pieces.first(where: { $0.id == pieceId }) else { continue }
+        guard let piece = PieceLibrary.pieceById[pieceId] else { continue }
         for variant in piece.variants {
           for cell in variant {
             let ox = startCorner.x - cell.x
@@ -77,8 +78,9 @@ public enum PlacementValidator {
     var anchors: [BoardPoint] = []
     var anchorSeen = Array(repeating: false, count: cellCount)
 
+    let raw = board.rawCells
     for idx in 0..<cellCount {
-      guard board.cells[idx] == playerId else { continue }
+      guard raw[idx] == playerTag else { continue }
       let px = idx % size
       let py = idx / size
       if px > 0        { edgeOfOwned[idx - 1] = true }
@@ -88,14 +90,14 @@ public enum PlacementValidator {
     }
 
     for idx in 0..<cellCount {
-      guard board.cells[idx] == playerId else { continue }
+      guard raw[idx] == playerTag else { continue }
       let px = idx % size
       let py = idx / size
       let diags = [(px - 1, py - 1), (px + 1, py - 1), (px - 1, py + 1), (px + 1, py + 1)]
       for (dx, dy) in diags {
         guard dx >= 0, dx < size, dy >= 0, dy < size else { continue }
         let di = dy * size + dx
-        if board.cells[di] == nil, !edgeOfOwned[di], !anchorSeen[di] {
+        if raw[di] == 0, !edgeOfOwned[di], !anchorSeen[di] {
           anchorSeen[di] = true
           anchors.append(BoardPoint(x: dx, y: dy))
         }
@@ -105,7 +107,7 @@ public enum PlacementValidator {
     if anchors.isEmpty { return false }
 
     for pieceId in remaining {
-      guard let piece = PieceLibrary.pieces.first(where: { $0.id == pieceId }) else { continue }
+      guard let piece = PieceLibrary.pieceById[pieceId] else { continue }
       for variant in piece.variants {
         var triedOrigins = Set<Int>()
         for anchor in anchors {
@@ -132,7 +134,7 @@ public enum PlacementValidator {
       let px = cell.x + ox
       let py = cell.y + oy
       guard px >= 0, px < size, py >= 0, py < size else { return false }
-      if board.cells[py * size + px] != nil { return false }
+      if board.rawCells[py * size + px] != 0 { return false }
     }
     return true
   }
@@ -146,7 +148,7 @@ public enum PlacementValidator {
       let py = cell.y + oy
       guard px >= 0, px < size, py >= 0, py < size else { return false }
       let idx = py * size + px
-      if board.cells[idx] != nil { return false }
+      if board.rawCells[idx] != 0 { return false }
       if edgeOfOwned[idx] { return false }
     }
     return true

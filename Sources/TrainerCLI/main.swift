@@ -45,9 +45,12 @@ struct TrainerCLI {
     var temperature: Double = 0
     var seed: UInt64 = UInt64(Date().timeIntervalSince1970)
     var outputDirectory: String = defaultSelfPlayOutputDirectory()
+    var modelPath: String?
+    var temperatureDropPly: Int = 0
   }
 
   private struct TrainOptions {
+    var dataPaths: [String] = []
     var dataPath: String = ""
     var outputPath: String = defaultModelOutputPath()
     var limit: Int?
@@ -57,6 +60,12 @@ struct TrainerCLI {
     var selectedBoost: Double = 1.0
     var maxActionBiases: Int = 40000
     var ridgeLambda: Double = 1e-3
+    var architecture: String = "linear"
+    var policyArchitecture: String = "table"
+    var epochs: Int = 20
+    var learningRate: Double = 0.001
+    var batchSize: Int = 256
+    var augment: Bool = false
   }
 
   private struct EvalOptions {
@@ -219,6 +228,17 @@ struct TrainerCLI {
         let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
         options.outputDirectory = value
 
+      case "--model":
+        let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
+        options.modelPath = value
+
+      case "--temperature-drop":
+        let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
+        guard let parsed = Int(value), parsed >= 0 else {
+          throw CLIError.invalidValue(option, value)
+        }
+        options.temperatureDropPly = parsed
+
       default:
         throw CLIError.unknownOption(argument)
       }
@@ -290,6 +310,49 @@ struct TrainerCLI {
           throw CLIError.invalidValue(option, value)
         }
         options.ridgeLambda = parsed
+
+      case "--architecture", "--arch":
+        let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
+        guard ["linear", "mlp", "cnn"].contains(value) else {
+          throw CLIError.invalidValue(option, value)
+        }
+        options.architecture = value
+
+      case "--policy-arch":
+        let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
+        guard ["table", "mlp"].contains(value) else {
+          throw CLIError.invalidValue(option, value)
+        }
+        options.policyArchitecture = value
+
+      case "--epochs":
+        let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
+        guard let parsed = Int(value), parsed > 0 else {
+          throw CLIError.invalidValue(option, value)
+        }
+        options.epochs = parsed
+
+      case "--lr", "--learning-rate":
+        let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
+        guard let parsed = Double(value), parsed > 0 else {
+          throw CLIError.invalidValue(option, value)
+        }
+        options.learningRate = parsed
+
+      case "--batch-size":
+        let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
+        guard let parsed = Int(value), parsed > 0 else {
+          throw CLIError.invalidValue(option, value)
+        }
+        options.batchSize = parsed
+
+      case "--augment":
+        options.augment = true
+        // No value needed, just a flag
+
+      case "--data-extra":
+        let value = try value(for: option, inlineValue: inlineValue, arguments: arguments, index: &index)
+        options.dataPaths.append(value)
 
       default:
         throw CLIError.unknownOption(argument)
@@ -416,21 +479,24 @@ struct TrainerCLI {
         explorationConstant: 1.25,
         maxCandidateMoves: options.maxCandidates,
         temperature: options.temperature
-      )
+      ),
+      temperatureDropPly: options.temperatureDropPly
     )
 
-    let runner = SelfPlayRunner(
-      config: config,
-      predictor: HeuristicPolicyValuePredictor()
-    )
+    if let modelPath = options.modelPath {
+      print("predictor: learned (\(modelPath))")
+    } else {
+      print("predictor: heuristic")
+    }
 
     print("selfplay started")
     print(
       "config: games=\(config.games), players=\(config.players), simulations=\(config.mcts.simulations), "
-        + "maxCandidates=\(config.mcts.maxCandidateMoves), parallelism=\(config.parallelism)"
+        + "maxCandidates=\(config.mcts.maxCandidateMoves), parallelism=\(config.parallelism), "
+        + "temperatureDrop=\(config.temperatureDropPly)"
     )
 
-    let batchResult = await runner.runBatch { progress in
+    let progressCallback: @Sendable (SelfPlayProgress) -> Void = { progress in
       let completionRate = progress.totalGames > 0
         ? (Double(progress.completedGames) / Double(progress.totalGames)) * 100
         : 100
@@ -443,6 +509,22 @@ struct TrainerCLI {
           + "elapsed=\(formatDuration(progress.elapsedSec)) "
           + "eta=\(eta)"
       )
+    }
+
+    let batchResult: SelfPlayBatchResult
+    if let modelPath = options.modelPath {
+      let model = try TrainedModelIO.load(from: URL(fileURLWithPath: modelPath))
+      let runner = SelfPlayRunner(
+        config: config,
+        predictor: LearnedPolicyValuePredictor(model: model)
+      )
+      batchResult = await runner.runBatch(progress: progressCallback)
+    } else {
+      let runner = SelfPlayRunner(
+        config: config,
+        predictor: HeuristicPolicyValuePredictor()
+      )
+      batchResult = await runner.runBatch(progress: progressCallback)
     }
 
     let outputURL = URL(fileURLWithPath: options.outputDirectory, isDirectory: true)
@@ -475,15 +557,45 @@ struct TrainerCLI {
 
     print("train started")
     print(
-      "config: data=\(dataURL.path), output=\(outputURL.path), policyBlend=\(options.policyBlend), "
-        + "valueBlend=\(options.valueBlend), maxActionBiases=\(options.maxActionBiases)"
+      "config: data=\(dataURL.path), output=\(outputURL.path), "
+        + "architecture=\(options.architecture), policyArch=\(options.policyArchitecture), policyBlend=\(options.policyBlend), "
+        + "valueBlend=\(options.valueBlend), maxActionBiases=\(options.maxActionBiases), "
+        + "augment=\(options.augment)"
     )
+    if options.architecture != "linear" {
+      print(
+        "  nn: epochs=\(options.epochs), lr=\(options.learningRate), batchSize=\(options.batchSize)"
+      )
+    }
 
     let loadStart = Date()
-    let positions = try TrainingDatasetReader.loadPositions(from: dataURL, limit: options.limit) { loaded in
+    var positions = try TrainingDatasetReader.loadPositions(from: dataURL, limit: options.limit) {
+      loaded in
       print("[progress] loaded_positions=\(loaded)")
     }
+
+    // Load extra data paths (cumulative replay buffer)
+    let remainingLimit: Int? = options.limit.map { max(0, $0 - positions.count) }
+    for extraPath in options.dataPaths {
+      if let remaining = remainingLimit, remaining <= 0 { break }
+      let extraURL = URL(fileURLWithPath: extraPath)
+      print("[progress] loading extra data: \(extraPath)")
+      let currentCount = positions.count
+      let extraLimit: Int? = options.limit.map { max(0, $0 - currentCount) }
+      let extra = try TrainingDatasetReader.loadPositions(from: extraURL, limit: extraLimit) {
+        loaded in
+        print("[progress]   extra_positions=\(loaded)")
+      }
+      positions.append(contentsOf: extra)
+    }
+
+    // Enforce total limit across all data sources
+    if let limit = options.limit, positions.count > limit {
+      positions = Array(positions.prefix(limit))
+    }
+
     let loadDuration = Date().timeIntervalSince(loadStart)
+    print("total_loaded_positions: \(positions.count) (\(String(format: "%.2fs", loadDuration)))")
 
     let configuration = TrainerConfiguration(
       label: options.label,
@@ -491,18 +603,29 @@ struct TrainerCLI {
       valueBlend: options.valueBlend,
       selectedActionBoost: options.selectedBoost,
       maxActionBiasCount: options.maxActionBiases,
-      ridgeLambda: options.ridgeLambda
+      ridgeLambda: options.ridgeLambda,
+      architecture: options.architecture,
+      policyArchitecture: options.policyArchitecture,
+      epochs: options.epochs,
+      learningRate: options.learningRate,
+      batchSize: options.batchSize,
+      augment: options.augment
     )
 
     let trainStart = Date()
-    let result = PolicyValueModelTrainer.train(positions: positions, configuration: configuration)
+    let result = PolicyValueModelTrainer.train(
+      positions: positions,
+      configuration: configuration,
+      progress: { message in print("[train] \(message)") }
+    )
     let trainDuration = Date().timeIntervalSince(trainStart)
 
     try TrainedModelIO.save(result.model, to: outputURL)
 
     let metrics = result.model.metrics
     print("train completed")
-    print("loaded_positions: \(positions.count) (\(String(format: "%.2fs", loadDuration)))")
+    print("architecture: \(result.model.resolvedArchitecture)")
+    print("trained_positions: \(metrics.positionCount)")
     print("train_time: \(String(format: "%.2fs", trainDuration))")
     print("value_mse: \(String(format: "%.6f", metrics.valueMSE))")
     print("unique_actions: \(metrics.uniqueActionCount)")
@@ -702,17 +825,26 @@ struct TrainerCLI {
       --temperature <double>   ルート温度 (default: 0)
       --seed <uint64>          乱数シード
       --output <path>          出力ディレクトリ
+      --model <path>           学習済みモデル (指定時は学習済みpredictorを使用)
+      --temperature-drop <int> 序盤N手はtemp=1.0で探索 (default: 0=無効)
 
     train options:
       --data <path>            positions.ndjson または run ディレクトリ
+      --data-extra <path>      追加データパス (累積リプレイバッファ, 複数指定可)
       --output <path>          学習済みモデル出力先 (default: Models/model-*.json)
       --limit <int>            読み込む局面数の上限
       --label <string>         モデル名ラベル
+      --architecture <str>     価値モデル種別: linear, mlp, cnn (default: linear)
+      --policy-arch <str>      方策モデル種別: table, mlp (default: table)
       --policy-blend <0...1>   推論時の方策ブレンド比 (default: 0.65)
       --value-blend <0...1>    推論時の価値ブレンド比 (default: 0.7)
       --selected-boost <double> 選択手バイアスの強化量 (default: 1.0)
       --max-action-biases <int> 保存する手バイアス数 (default: 40000)
       --ridge <double>         価値線形回帰のL2正則化 (default: 0.001)
+      --epochs <int>           MLP/CNNエポック数 (default: 20)
+      --lr <double>            MLP/CNN学習率 (default: 0.001)
+      --batch-size <int>       MLP/CNNバッチサイズ (default: 256)
+      --augment                8倍対称性データ拡張を有効化
 
     eval options:
       --model-a <path>         比較対象Aモデル

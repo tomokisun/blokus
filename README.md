@@ -188,76 +188,73 @@ swift test
 
 ## 学習CLI (macOS)
 
-`TrainerCLI` ターゲットを使うと、M4 Mac mini で自己対戦データを生成できます。
+`TrainerCLI` ターゲットを使うと、M4 Mac mini で自己対戦・学習・評価・書き出しを実行できます。
 
-### 実行例
-
-```bash
-swift run TrainerCLI selfplay \
-  --games 128 \
-  --players 4 \
-  --simulations 480 \
-  --max-candidates 56 \
-  --parallel 8 \
-  --output TrainingRuns/run-001
-```
-
-実行中は進捗が出ます（完了局数・割合・生成局面数・速度・ETA）。
-
-```text
-[progress] 32/128 (25.0%) positions=1845 speed=1.27 game/s elapsed=00:25 eta=01:15
-```
-
-### 生成物
-
-- `positions.ndjson`: 盤面エンコード、選択手、方策分布、最終アウトカム
-- `games.ndjson`: 各対局の勝者・手数・最終スコア
-- `metadata.json`: 実行時間、設定、データ件数
-
-### 学習
+### 自動ループ（推奨）
 
 ```bash
-swift run TrainerCLI train \
-  --data TrainingRuns/run-001 \
-  --output Models/model-001.json \
-  --label model-001
+make m4-loop LOOP_COUNT=5
 ```
 
-### 評価
+selfplay → merge → train → eval → export を N サイクル連続実行し、勝率閾値を超えたモデルを自動プロモートします。
+
+### 個別実行
 
 ```bash
-swift run TrainerCLI eval \
-  --model-a Models/model-prev.json \
+make m4-selfplay    # 自己対戦データ生成
+make m4-merge       # shard データ結合
+make m4-train       # モデル学習（MLP + データ拡張）
+make m4-eval        # ベストモデルとの比較評価
+make m4-export      # 配布用バンドル出力
+make m4-all         # 上記を一括実行
+```
+
+### モデルアーキテクチャ
+
+3種類のモデルアーキテクチャを選択可能:
+
+- `linear`: 4特徴量の線形回帰（v1互換）
+- `mlp`: 21特徴量 → 2層MLP (64→32→1)（**推奨**）
+- `cnn`: 20×20×4ch → Conv2D×2 → Dense（実験的）
+
+```bash
+make m4-all TRAIN_ARCHITECTURE=mlp TRAIN_AUGMENT=true
+```
+
+### データ強化
+
+- **8倍対称性データ拡張** (`--augment`): 4回転×2反転で学習データを8倍に拡張
+- **累積リプレイバッファ** (`--data-extra`): 過去サイクルのデータを蓄積して学習
+
+### 手動実行例
+
+```bash
+# 自己対戦（学習済みモデル使用）
+./.build/release/TrainerCLI selfplay \
+  --games 10000 --simulations 256 --model Models/model-best.json \
+  --temperature-drop 20 --output TrainingRuns/run-001
+
+# MLP学習（データ拡張 + 累積データ）
+./.build/release/TrainerCLI train \
+  --data TrainingRuns/run-001/merged \
+  --data-extra TrainingRuns/run-000/merged \
+  --architecture mlp --epochs 20 --augment \
+  --output Models/model-001.json
+
+# 評価
+./.build/release/TrainerCLI eval \
+  --model-a Models/model-best.json \
   --model-b Models/model-001.json \
-  --games 2000 \
-  --output Reports/eval-model-001.json
-```
+  --games 3000 --output Reports/eval-001.json
 
-### 書き出し
-
-```bash
-swift run TrainerCLI export \
+# 書き出し
+./.build/release/TrainerCLI export \
   --model Models/model-001.json \
-  --output Exports/export-model-001
-```
-
-### M4 Mac mini 向け Make プリセット
-
-```bash
-make m4-all
-```
-
-個別実行:
-
-```bash
-make m4-selfplay
-make m4-merge
-make m4-train
-make m4-eval
-make m4-export
+  --output Exports/export-001
 ```
 
 ## 学習計画とCoreML運用
 
+- トレーニングアーキテクチャ: `TRAINING_ARCHITECTURE.md`
 - トレーニング計画: `TRAINING_PLAN.md`
 - CoreML運用ガイド: `COREML_GUIDE.md`

@@ -77,10 +77,20 @@ public struct SelfPlayRunner<Model: PolicyValuePredicting>: Sendable {
     )
 
     var rng = SplitMix64(seed: config.baseSeed &+ UInt64(index) &* 0x9E37_79B9)
-    let agent = MCTSAgent(
-      predictor: predictor,
-      moveGenerator: moveGenerator,
-      config: config.mcts
+
+    let explorationConfig: MCTSConfiguration = {
+      var c = config.mcts
+      c.temperature = 1.0
+      return c
+    }()
+    var exploitConfig: MCTSConfiguration = config.mcts
+    exploitConfig.temperature = 0
+
+    let explorationAgent = MCTSAgent(
+      predictor: predictor, moveGenerator: moveGenerator, config: explorationConfig
+    )
+    let exploitAgent = MCTSAgent(
+      predictor: predictor, moveGenerator: moveGenerator, config: exploitConfig
     )
 
     var positions: [TrainingPosition] = []
@@ -90,15 +100,12 @@ public struct SelfPlayRunner<Model: PolicyValuePredicting>: Sendable {
     while engine.state.phase != .finished, turn < config.maxTurns {
       let snapshot = engine.state
       let activePlayer = snapshot.activePlayerId
+      let agent = (config.temperatureDropPly > 0 && turn < config.temperatureDropPly)
+        ? explorationAgent : exploitAgent
       let decision = agent.decide(state: snapshot, rng: &rng)
-      let legalMoves = moveGenerator.legalMoves(
-        for: snapshot,
-        playerId: activePlayer,
-        maxCount: max(1, config.mcts.maxCandidateMoves)
-      )
       let selectedAction = sanitize(
         action: decision.selectedAction,
-        legalMoves: legalMoves,
+        legalMoves: decision.rootLegalMoves,
         fallbackPolicy: decision.policy
       )
 

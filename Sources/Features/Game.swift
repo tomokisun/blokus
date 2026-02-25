@@ -1,3 +1,4 @@
+import AICore
 import ComposableArchitecture
 import Domain
 import Foundation
@@ -10,6 +11,7 @@ public struct Game {
     public var selectedPieceId: String?
     public var selectedVariantIndex: Int
     public var showHighlight: Bool
+    public var isAIThinking: Bool
 
     public init(
       gameState: GameState = GameState(
@@ -19,12 +21,14 @@ public struct Game {
       ),
       selectedPieceId: String? = nil,
       selectedVariantIndex: Int = 0,
-      showHighlight: Bool = true
+      showHighlight: Bool = true,
+      isAIThinking: Bool = false
     ) {
       self.gameState = gameState
       self.selectedPieceId = selectedPieceId
       self.selectedVariantIndex = selectedVariantIndex
       self.showHighlight = showHighlight
+      self.isAIThinking = isAIThinking
     }
 
     public var isGameOver: Bool {
@@ -33,6 +37,10 @@ public struct Game {
 
     public var activePlayerIndex: Int {
       gameState.activeIndex
+    }
+
+    public var isActivePlayerAI: Bool {
+      gameState.activePlayerIsAI
     }
 
     public var remainingPiecesForCurrentPlayer: [Piece] {
@@ -55,7 +63,7 @@ public struct Game {
     public var selectedPieceVariant: [BoardPoint]? {
       guard
         let pieceId = selectedPieceId,
-        let piece = PieceLibrary.pieces.first(where: { $0.id == pieceId })
+        let piece = PieceLibrary.pieceById[pieceId]
       else {
         return nil
       }
@@ -114,6 +122,8 @@ public struct Game {
     case passButtonTapped
     case pieceTapped(String)
     case rotateButtonTapped
+    case aiMoveCompleted(CommandAction)
+    case triggerAITurn
     case delegate(Delegate)
 
     public enum Delegate {
@@ -127,14 +137,16 @@ public struct Game {
     Reduce { state, action in
       switch action {
       case let .pieceTapped(pieceId):
+        guard !state.isActivePlayerAI else { return .none }
         state.selectedPieceId = pieceId
         state.selectedVariantIndex = 0
         return .none
 
       case .rotateButtonTapped:
+        guard !state.isActivePlayerAI else { return .none }
         guard
           let pieceId = state.selectedPieceId,
-          let piece = PieceLibrary.pieces.first(where: { $0.id == pieceId })
+          let piece = PieceLibrary.pieceById[pieceId]
         else {
           return .none
         }
@@ -154,9 +166,10 @@ public struct Game {
         return .none
 
       case .flipButtonTapped:
+        guard !state.isActivePlayerAI else { return .none }
         guard
           let pieceId = state.selectedPieceId,
-          let piece = PieceLibrary.pieces.first(where: { $0.id == pieceId })
+          let piece = PieceLibrary.pieceById[pieceId]
         else {
           return .none
         }
@@ -176,16 +189,38 @@ public struct Game {
         return .none
 
       case let .boardCellTapped(point):
-        guard !state.isGameOver else {
+        guard !state.isGameOver, !state.isActivePlayerAI else {
           return .none
         }
-        return placeSelectedPiece(at: point, state: &state)
+        let effect = placeSelectedPiece(at: point, state: &state)
+        return effect.concatenate(with: triggerAIIfNeeded(state: state))
 
       case .passButtonTapped:
+        guard !state.isActivePlayerAI else { return .none }
         let activePlayer = state.gameState.activePlayerId
         _ = state.gameState.apply(action: .pass, by: activePlayer)
         clearSelection(state: &state)
-        return .none
+        return triggerAIIfNeeded(state: state)
+
+      case .triggerAITurn:
+        guard !state.isGameOver, state.isActivePlayerAI else {
+          state.isAIThinking = false
+          return .none
+        }
+        state.isAIThinking = true
+        let gameState = state.gameState
+        return .run { send in
+          let action = await Self.computeAIMove(gameState: gameState)
+          await send(.aiMoveCompleted(action))
+        }
+
+      case let .aiMoveCompleted(commandAction):
+        state.isAIThinking = false
+        guard !state.isGameOver else { return .none }
+        let activePlayer = state.gameState.activePlayerId
+        _ = state.gameState.apply(action: commandAction, by: activePlayer)
+        clearSelection(state: &state)
+        return triggerAIIfNeeded(state: state)
 
       case .newGameButtonTapped:
         return .send(.delegate(.backToMenu))
@@ -194,6 +229,65 @@ public struct Game {
         return .none
       }
     }
+  }
+
+  private func triggerAIIfNeeded(state: State) -> Effect<Action> {
+    guard !state.isGameOver, state.isActivePlayerAI else { return .none }
+    return .run { send in
+      try await Task.sleep(for: .milliseconds(300))
+      await send(.triggerAITurn)
+    }
+  }
+
+  private static func computeAIMove(gameState: GameState) async -> CommandAction {
+    await withCheckedContinuation { continuation in
+      let predictor = Self.loadPredictor()
+      let agent = MCTSAgent(
+        predictor: predictor,
+        config: MCTSConfiguration(
+          simulations: 160,
+          maxCandidateMoves: 48,
+          temperature: 0
+        )
+      )
+      var rng = SplitMix64(seed: UInt64.random(in: 0...UInt64.max))
+      let decision = agent.decide(state: gameState, rng: &rng)
+      continuation.resume(returning: decision.selectedAction)
+    }
+  }
+
+  nonisolated(unsafe) private static var cachedModel: TrainedPolicyValueModel?
+
+  private static func loadPredictor() -> LearnedPolicyValuePredictor {
+    if let model = cachedModel {
+      return LearnedPolicyValuePredictor(model: model)
+    }
+
+    if let url = Bundle.main.url(forResource: "model-best", withExtension: "json"),
+       let model = try? TrainedModelIO.load(from: url) {
+      cachedModel = model
+      return LearnedPolicyValuePredictor(model: model)
+    }
+
+    // No bundled model found — use heuristic via LearnedPolicyValuePredictor's fallback
+    let emptyModel = TrainedPolicyValueModel(
+      createdAt: Date(),
+      label: "heuristic-fallback",
+      policyBlend: 0,
+      valueBlend: 0,
+      passBias: 0,
+      actionBiasByKey: [:],
+      pieceBiasById: [:],
+      valueModel: LinearValueModel(
+        intercept: 0, leadWeight: 0, progressWeight: 0,
+        occupancyWeight: 0, playerBiasById: [:]
+      ),
+      metrics: ModelTrainingMetrics(
+        positionCount: 0, uniqueActionCount: 0, storedActionBiasCount: 0,
+        uniquePieceCount: 0, valueMSE: 0, averageTarget: 0
+      )
+    )
+    return LearnedPolicyValuePredictor(model: emptyModel)
   }
 
   private static func canonicalize(_ points: [BoardPoint]) -> [BoardPoint] {
